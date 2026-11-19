@@ -27,10 +27,18 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://tierlens:tierlens_secure_pass@localhost:5432/tierlens_db"
     SYNC_DATABASE_URL: str = "postgresql+psycopg2://tierlens:tierlens_secure_pass@localhost:5432/tierlens_db"
 
-    # SQLite fallback
+    # SQLite fallback & Database Mode
+    # DATABASE_MODE options: "auto" (fallback to sqlite in dev), "postgres_required" (strict postgres, no fallback), "sqlite_only"
+    DATABASE_MODE: str = "auto"
     SQLITE_FALLBACK_ENABLED: bool = True
     SQLITE_DATABASE_URL: str = "sqlite+aiosqlite:///./tierlens.db"
     SQLITE_SYNC_DATABASE_URL: str = "sqlite:///./tierlens.db"
+
+    # Concurrency & Background Job Limits
+    MAX_CONCURRENT_BROWSER_JOBS: int = 2
+    WORKSPACE_MAX_ACTIVE_JOBS: int = 4
+    WEB_TEST_TIMEOUT_SECONDS: int = 120
+    JOB_POLL_INTERVAL_MS: int = 1500
 
     # Neo4j
     NEO4J_URI: str = "bolt://localhost:7687"

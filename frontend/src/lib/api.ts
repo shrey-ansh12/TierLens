@@ -113,6 +113,16 @@ export class ApiClient {
     });
   }
 
+  static getWebJobStatus(jobId: string) {
+    return this.request(`/api/v1/tests/web/jobs/${jobId}`);
+  }
+
+  static cancelWebJob(jobId: string) {
+    return this.request(`/api/v1/tests/web/jobs/${jobId}/cancel`, {
+      method: "POST",
+    });
+  }
+
   // Engine B: Android Testing
   static getDeviceLabStatus() {
     return this.request("/api/v1/tests/android/device-status");

@@ -15,6 +15,7 @@ TierLens has been engineered from zero inside the isolated `hackfront 1` workspa
 
 | Phase | Milestone | Status | Verification & Evidence |
 | :--- | :--- | :--- | :--- |
+| **Audit Phase 1** | **Background Test Execution Architecture** | `COMPLETED` | Refactored website testing from synchronous 25s HTTP request handler to asynchronous background job queue returning immediate `HTTP 202 Accepted` with `job_id`. Built Celery + Redis dispatch with resilient in-process async worker fallback, in-memory concurrency manager (`MAX_CONCURRENT_BROWSER_JOBS=2`), status polling endpoint (`/api/v1/tests/web/jobs/{id}`), job cancellation, and explicit database mode with SQLite WAL concurrency. Verified via 5/5 Pytest suite (`backend/tests/test_background_jobs.py`). |
 | **Phase 1** | **Architecture & Foundation** | `COMPLETED` | FastAPI app, Pydantic Settings, Docker Compose stack (`PostgreSQL`, `Neo4j`, `Redis`), SQLite zero-config fallback. |
 | **Phase 2** | **Authentication & Core Database** | `COMPLETED` | SQLAlchemy 2.0 async models for Users, Workspaces, Projects, Versions, TestRuns, TestMetrics, TestFailures, TestArtifacts, Recommendations, and AuditLogs. JWT authentication. |
 | **Phase 3** | **Website Testing Engine (Engine A)** | `COMPLETED` | Playwright Chromium runner, CDP throttling (4x & 8x CPU), Core Web Vitals extraction (FCP, LCP, CLS, TTFB, INP), console error logging, and screenshots. SSRF guard strictly blocking private IP subnets and cloud metadata endpoints. |

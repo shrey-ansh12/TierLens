@@ -64,3 +64,4 @@ class RedisManager:
             self._connected = False
 
 redis_manager = RedisManager()
+redis_client = redis_manager

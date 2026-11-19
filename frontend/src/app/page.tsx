@@ -68,6 +68,12 @@ export default function TierLensApp() {
   const [selectedTier, setSelectedTier] = useState("BOTH");
   const [isRunningTest, setIsRunningTest] = useState(false);
   const [testStep, setTestStep] = useState<string | null>(null);
+  const [activeJob, setActiveJob] = useState<{
+    job_id: string;
+    status: string;
+    stage: string;
+    progress_message: string;
+  } | null>(null);
   const [testResult, setTestResult] = useState<any>(null);
   const [comparisonData, setComparisonData] = useState<any>(null);
   const [graphData, setGraphData] = useState<any>({ nodes: [], edges: [], connected: false });
@@ -114,53 +120,105 @@ export default function TierLensApp() {
     refreshHealth();
   }, []);
 
+  const handleCancelJob = async () => {
+    if (!activeJob) return;
+    try {
+      await ApiClient.cancelWebJob(activeJob.job_id);
+      setTestStep("Cancellation requested...");
+    } catch (err: any) {
+      setErrorBanner(err.message || "Failed to cancel job.");
+    }
+  };
+
   const handleExecuteWebTest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!testUrl) return;
 
     setErrorBanner(null);
     setIsRunningTest(true);
-    setTestStep("Validating SSRF & safety headers...");
+    setTestStep("Submitting test to background queue...");
 
     try {
-      setTestStep("Launching Playwright Chromium with CDP throttling...");
-      const res = await ApiClient.runWebTest({
+      const queueRes = await ApiClient.runWebTest({
         target_url: testUrl,
         tier: selectedTier,
       });
 
-      setTestStep("Extracting Web Vitals, HAR, and console logs...");
-      setTestResult(res);
+      const jobId = queueRes.job_id;
+      setActiveJob({
+        job_id: jobId,
+        status: queueRes.status || "QUEUED",
+        stage: queueRes.stage || "Queue Dispatch",
+        progress_message: queueRes.message || "Job accepted for execution.",
+      });
+      setTestStep(`[${queueRes.status || "QUEUED"}] ${queueRes.message || "Job accepted"}`);
 
-      if (res.mode === "DUAL_COMPARISON") {
-        setTestStep("Computing comparative degradation between Good Budget and Entry-Level...");
-        const comp = await ApiClient.getComparison(res.comparison_group_id);
-        setComparisonData(comp);
+      // Poll background execution status until completion, failure, or cancellation
+      let finished = false;
+      let consecutiveErrors = 0;
+      const MAX_CONSECUTIVE_ERRORS = 5;
 
-        if (comp.entry_level_run?.id) {
-          const recs = await ApiClient.getRunRecommendations(comp.entry_level_run.id);
-          setRecommendations(recs);
+      while (!finished) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        try {
+          const statusRes = await ApiClient.getWebJobStatus(jobId);
+          consecutiveErrors = 0;
+
+          setActiveJob({
+            job_id: statusRes.job_id,
+            status: statusRes.status,
+            stage: statusRes.stage,
+            progress_message: statusRes.progress_message,
+          });
+          setTestStep(`[${statusRes.status}] ${statusRes.stage}: ${statusRes.progress_message}`);
+
+          if (statusRes.status === "COMPLETED") {
+            finished = true;
+            setTestResult(statusRes);
+
+            if (statusRes.mode === "DUAL_COMPARISON" && statusRes.comparison_group_id) {
+              setTestStep("Loading comparative metrics diff...");
+              const comp = await ApiClient.getComparison(statusRes.comparison_group_id);
+              setComparisonData(comp);
+
+              if (comp.entry_level_run?.id) {
+                const recs = await ApiClient.getRunRecommendations(comp.entry_level_run.id);
+                setRecommendations(recs);
+              }
+
+              if (comp.entry_level_run?.project_id) {
+                const g = await ApiClient.getProjectGraph(comp.entry_level_run.project_id);
+                setGraphData(g);
+              }
+
+              setActiveTab("compare");
+            } else if (statusRes.test_run_id) {
+              setTestStep("Loading single device recommendations...");
+              const recs = await ApiClient.getRunRecommendations(statusRes.test_run_id);
+              setRecommendations(recs);
+              setActiveTab("failures");
+            }
+          } else if (statusRes.status === "FAILED") {
+            finished = true;
+            throw new Error(statusRes.error || statusRes.progress_message || "Background execution failed.");
+          } else if (statusRes.status === "CANCELLED") {
+            finished = true;
+            setErrorBanner("Test execution was cancelled.");
+          }
+        } catch (err: any) {
+          consecutiveErrors++;
+          if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS || err.message?.includes("failed")) {
+            throw err;
+          }
         }
-
-        if (comp.entry_level_run?.project_id) {
-          const g = await ApiClient.getProjectGraph(comp.entry_level_run.project_id);
-          setGraphData(g);
-        }
-
-        setActiveTab("compare");
-      } else {
-        setTestStep("Completed single device analysis.");
-        if (res.test_run_id) {
-          const recs = await ApiClient.getRunRecommendations(res.test_run_id);
-          setRecommendations(recs);
-        }
-        setActiveTab("failures");
       }
     } catch (err: any) {
       setErrorBanner(err.message || "Failed to execute test.");
     } finally {
       setIsRunningTest(false);
       setTestStep(null);
+      setActiveJob(null);
     }
   };
 
@@ -369,9 +427,17 @@ export default function TierLensApp() {
               {activeTab.replace("_", " ")}
             </h2>
             {testStep && (
-              <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded-full text-xs font-mono text-blue-700 animate-pulse">
-                <Terminal className="w-3.5 h-3.5" />
-                <span>{testStep}</span>
+              <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded-full text-xs font-mono text-blue-700">
+                <Terminal className="w-3.5 h-3.5 animate-pulse text-blue-600 shrink-0" />
+                <span className="truncate max-w-md">{testStep}</span>
+                {activeJob && (
+                  <button
+                    onClick={handleCancelJob}
+                    className="ml-2 text-[10px] font-bold uppercase tracking-wider text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-0.5 rounded transition"
+                  >
+                    Cancel
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -598,9 +664,47 @@ export default function TierLensApp() {
                     className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium text-xs rounded-lg transition flex items-center gap-2 shadow-sm"
                   >
                     {isRunningTest ? <RotateCcw className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-white" />}
-                    {isRunningTest ? "Executing Playwright Chromium Test..." : "Execute Web Test"}
+                    {isRunningTest ? "Executing Background Test..." : "Execute Web Test"}
                   </button>
                 </form>
+
+                {/* Real-time Background Job Progress Card */}
+                {activeJob && (
+                  <div className="mt-6 p-4 rounded-xl bg-slate-50 border border-blue-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-ping" />
+                        <span className="text-xs font-bold text-slate-900 font-mono">Job ID: {activeJob.job_id}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono uppercase ${
+                          activeJob.status === "COMPLETED" ? "bg-emerald-100 text-emerald-800" :
+                          activeJob.status === "FAILED" ? "bg-red-100 text-red-800" :
+                          activeJob.status === "RUNNING" ? "bg-blue-100 text-blue-800" :
+                          "bg-amber-100 text-amber-800"
+                        }`}>
+                          {activeJob.status}
+                        </span>
+                        <button
+                          onClick={handleCancelJob}
+                          className="text-[10px] text-red-600 hover:text-red-800 font-semibold underline ml-1"
+                        >
+                          Cancel Job
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 text-xs text-slate-700">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-slate-500">Pipeline Stage:</span>
+                        <span className="font-medium text-blue-700">{activeJob.stage}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-slate-500">Status Detail:</span>
+                        <span className="text-slate-600">{activeJob.progress_message}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
