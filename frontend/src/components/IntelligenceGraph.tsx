@@ -32,13 +32,13 @@ interface Props {
 }
 
 const COLOR_MAP: Record<string, string> = {
-  Application: "#06B6D4",      // Cyan
-  TestRun: "#3B82F6",          // Blue
-  DeviceProfile: "#8B5CF6",    // Purple
-  Failure: "#EF4444",          // Red
-  ErrorSignature: "#F59E0B",   // Amber
-  Metric: "#10B981",           // Emerald
-  Recommendation: "#EC4899",   // Pink
+  Application: "#2563EB",      // Blue
+  TestRun: "#0284C7",          // Sky
+  DeviceProfile: "#7C3AED",    // Purple
+  Failure: "#DC2626",          // Red
+  ErrorSignature: "#D97706",   // Amber
+  Metric: "#16A34A",           // Emerald
+  Recommendation: "#DB2777",   // Pink
 };
 
 export default function IntelligenceGraph({ data, onRefresh }: Props) {
@@ -55,7 +55,6 @@ export default function IntelligenceGraph({ data, onRefresh }: Props) {
   useEffect(() => {
     if (!data.nodes || data.nodes.length === 0) return;
 
-    // Initialize positions in a circle/galaxy layout
     const width = 800;
     const height = 500;
     const count = data.nodes.length;
@@ -74,15 +73,13 @@ export default function IntelligenceGraph({ data, onRefresh }: Props) {
     nodesRef.current = nodes;
     edgesRef.current = data.edges || [];
 
-    // Simple force layout simulation loop
     let animId: number;
     let ticks = 0;
 
     const simulate = () => {
-      if (ticks > 80) return; // Settle after 80 steps
+      if (ticks > 80) return;
       ticks++;
 
-      // Repulsion between nodes
       for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
           const dx = nodes[j].x! - nodes[i].x!;
@@ -98,7 +95,6 @@ export default function IntelligenceGraph({ data, onRefresh }: Props) {
         }
       }
 
-      // Attraction along edges
       const nodeMap = new Map(nodes.map(n => [n.id, n]));
       for (const e of edgesRef.current) {
         const source = nodeMap.get(e.source);
@@ -134,7 +130,10 @@ export default function IntelligenceGraph({ data, onRefresh }: Props) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
 
-    // Pan & Zoom
+    // Subtle background grid
+    ctx.fillStyle = "#F8FAFC";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
     ctx.translate(pan.x + canvas.width / 2, pan.y + canvas.height / 2);
     ctx.scale(zoom, zoom);
     ctx.translate(-canvas.width / 2, -canvas.height / 2);
@@ -149,45 +148,42 @@ export default function IntelligenceGraph({ data, onRefresh }: Props) {
         ctx.beginPath();
         ctx.moveTo(source.x!, source.y!);
         ctx.lineTo(target.x!, target.y!);
-        ctx.strokeStyle = "rgba(71, 85, 105, 0.4)";
+        ctx.strokeStyle = "#CBD5E1";
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Edge type label in small font
         const midX = (source.x! + target.x!) / 2;
         const midY = (source.y! + target.y!) / 2;
-        ctx.font = "9px monospace";
-        ctx.fillStyle = "rgba(148, 163, 184, 0.6)";
+        ctx.font = "10px sans-serif";
+        ctx.fillStyle = "#64748B";
         ctx.textAlign = "center";
-        ctx.fillText(e.type, midX, midY - 3);
+        ctx.fillText(e.type, midX, midY - 4);
       }
     }
 
     // Draw Nodes
     for (const n of nodesRef.current) {
-      const color = COLOR_MAP[n.label] || "#94A3B8";
+      const color = COLOR_MAP[n.label] || "#64748B";
       const isSelected = selectedNode?.id === n.id;
 
       ctx.beginPath();
       ctx.arc(n.x!, n.y!, isSelected ? 14 : 10, 0, 2 * Math.PI);
       ctx.fillStyle = color;
-      ctx.shadowColor = color;
-      ctx.shadowBlur = isSelected ? 15 : 6;
+      ctx.shadowColor = "rgba(0,0,0,0.15)";
+      ctx.shadowBlur = 6;
       ctx.fill();
       ctx.shadowBlur = 0;
 
-      // Outer ring if selected
       if (isSelected) {
         ctx.beginPath();
-        ctx.arc(n.x!, n.y!, 18, 0, 2 * Math.PI);
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.lineWidth = 2;
+        ctx.arc(n.x!, n.y!, 17, 0, 2 * Math.PI);
+        ctx.strokeStyle = "#1E293B";
+        ctx.lineWidth = 2.5;
         ctx.stroke();
       }
 
-      // Label text
-      ctx.font = "11px sans-serif";
-      ctx.fillStyle = "#E2E8F0";
+      ctx.font = "bold 11px sans-serif";
+      ctx.fillStyle = "#1E293B";
       ctx.textAlign = "center";
       ctx.fillText(n.name, n.x!, n.y! + 24);
     }
@@ -206,11 +202,9 @@ export default function IntelligenceGraph({ data, onRefresh }: Props) {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    // Convert mouse coords back through pan & zoom
     const transformedX = (mouseX - (pan.x + canvas.width / 2)) / zoom + canvas.width / 2;
     const transformedY = (mouseY - (pan.y + canvas.height / 2)) / zoom + canvas.height / 2;
 
-    // Check hit test for node selection
     const hit = nodesRef.current.find(n => {
       const dx = n.x! - transformedX;
       const dy = n.y! - transformedY;
@@ -240,25 +234,25 @@ export default function IntelligenceGraph({ data, onRefresh }: Props) {
 
   if (!data.connected) {
     return (
-      <div className="bg-[#0D131F] border border-amber-900/40 rounded-xl p-8 text-center flex flex-col items-center justify-center min-h-[420px]">
-        <div className="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-4 text-amber-400">
-          <Database className="w-7 h-7" />
+      <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-8 text-center flex flex-col items-center justify-center min-h-[420px]">
+        <div className="w-12 h-12 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center mb-4 text-amber-700">
+          <Database className="w-6 h-6" />
         </div>
-        <h3 className="text-xl font-bold text-white mb-2">Neo4j Intelligence Graph Disconnected</h3>
-        <p className="text-sm text-slate-400 max-w-lg mb-6 leading-relaxed">
+        <h3 className="text-lg font-bold text-slate-900 mb-2">Neo4j Intelligence Graph Disconnected</h3>
+        <p className="text-xs text-slate-600 max-w-lg mb-5 leading-relaxed">
           {data.error || "The Neo4j graph database container is offline or unreachable at bolt://localhost:7687."}
           <br />
-          Per the <strong className="text-slate-300">Strict Real Data Policy</strong>, TierLens never generates synthetic graph relationships when the database is unavailable.
+          Per the <strong className="text-slate-800">Strict Real Data Policy</strong>, TierLens never generates synthetic graph relationships when the database is unavailable.
         </p>
-        <div className="bg-[#080C14] border border-slate-800 rounded-lg p-3 text-xs font-mono text-cyan-400 mb-6 max-w-md w-full text-left">
+        <div className="bg-white border border-slate-200 rounded-lg p-2.5 text-xs font-mono text-slate-700 mb-5 max-w-md w-full text-left shadow-sm">
           $ docker compose up -d neo4j
         </div>
         {onRefresh && (
           <button
             onClick={onRefresh}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-black font-semibold text-sm transition"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs shadow-sm transition"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-3.5 h-3.5" />
             Check Neo4j Connection
           </button>
         )}
@@ -267,46 +261,46 @@ export default function IntelligenceGraph({ data, onRefresh }: Props) {
   }
 
   return (
-    <div className="relative bg-[#0D131F] border border-slate-800 rounded-xl overflow-hidden">
+    <div className="relative bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
       {/* Controls Header */}
       <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
-        <div className="flex items-center gap-2 bg-[#080C14]/80 backdrop-blur border border-slate-700/60 px-3 py-1.5 rounded-lg text-xs font-mono text-cyan-400">
-          <Layers className="w-3.5 h-3.5" />
+        <div className="flex items-center gap-2 bg-white/95 backdrop-blur border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-700 shadow-sm">
+          <Layers className="w-3.5 h-3.5 text-blue-600" />
           <span>{data.nodes.length} Nodes</span>
-          <span className="text-slate-600">|</span>
+          <span className="text-slate-300">|</span>
           <span>{data.edges.length} Relationships</span>
         </div>
       </div>
 
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 bg-[#080C14]/80 backdrop-blur border border-slate-700/60 p-1 rounded-lg">
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 bg-white/95 backdrop-blur border border-slate-200 p-1 rounded-lg shadow-sm">
         <button
           onClick={() => setZoom(z => Math.min(z + 0.2, 2.5))}
-          className="p-1.5 hover:bg-slate-800 rounded text-slate-300 transition"
+          className="p-1.5 hover:bg-slate-100 rounded text-slate-600 transition"
           title="Zoom In"
         >
           <ZoomIn className="w-4 h-4" />
         </button>
         <button
           onClick={() => setZoom(z => Math.max(z - 0.2, 0.4))}
-          className="p-1.5 hover:bg-slate-800 rounded text-slate-300 transition"
+          className="p-1.5 hover:bg-slate-100 rounded text-slate-600 transition"
           title="Zoom Out"
         >
           <ZoomOut className="w-4 h-4" />
         </button>
         <button
           onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
-          className="px-2 py-1 text-xs text-slate-300 hover:bg-slate-800 rounded transition font-mono"
+          className="px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 rounded transition font-mono"
         >
           Reset
         </button>
       </div>
 
       {/* Legend */}
-      <div className="absolute bottom-4 left-4 z-10 flex flex-wrap gap-2.5 bg-[#080C14]/90 backdrop-blur border border-slate-800 px-3 py-2 rounded-lg text-[11px]">
+      <div className="absolute bottom-4 left-4 z-10 flex flex-wrap gap-2.5 bg-white/95 backdrop-blur border border-slate-200 px-3 py-2 rounded-lg text-[11px] shadow-sm">
         {Object.entries(COLOR_MAP).map(([label, color]) => (
           <div key={label} className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
-            <span className="text-slate-300">{label}</span>
+            <span className="text-slate-700 font-medium">{label}</span>
           </div>
         ))}
       </div>
@@ -324,27 +318,27 @@ export default function IntelligenceGraph({ data, onRefresh }: Props) {
 
       {/* Node Inspector Drawer */}
       {selectedNode && (
-        <div className="absolute top-4 right-4 w-72 bg-[#0F172A] border border-cyan-500/40 rounded-xl p-4 shadow-2xl z-20 text-xs">
+        <div className="absolute top-4 right-4 w-72 bg-white border border-slate-200 rounded-xl p-4 shadow-xl z-20 text-xs">
           <div className="flex justify-between items-start mb-2">
             <span
               className="px-2 py-0.5 rounded text-[10px] font-bold"
-              style={{ backgroundColor: `${COLOR_MAP[selectedNode.label]}25`, color: COLOR_MAP[selectedNode.label] }}
+              style={{ backgroundColor: `${COLOR_MAP[selectedNode.label]}15`, color: COLOR_MAP[selectedNode.label] }}
             >
               {selectedNode.label}
             </span>
             <button
               onClick={() => setSelectedNode(null)}
-              className="text-slate-400 hover:text-white"
+              className="text-slate-400 hover:text-slate-700 text-sm"
             >
               ✕
             </button>
           </div>
-          <h4 className="font-bold text-white text-sm mb-2">{selectedNode.name}</h4>
-          <div className="space-y-1.5 font-mono text-[11px] text-slate-300 bg-[#080C14] p-2.5 rounded-lg border border-slate-800 max-h-48 overflow-y-auto">
+          <h4 className="font-bold text-slate-900 text-sm mb-2">{selectedNode.name}</h4>
+          <div className="space-y-1.5 font-mono text-[11px] text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200 max-h-48 overflow-y-auto">
             {Object.entries(selectedNode.properties || {}).map(([k, v]) => (
               <div key={k} className="flex justify-between gap-2">
                 <span className="text-slate-500">{k}:</span>
-                <span className="text-cyan-300 truncate max-w-[140px]">{String(v)}</span>
+                <span className="text-blue-700 font-semibold truncate max-w-[140px]">{String(v)}</span>
               </div>
             ))}
           </div>
