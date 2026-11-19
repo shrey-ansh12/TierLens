@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+backend/.venv/
+.venv/
+venv/
+env/
+
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Next.js build
+frontend/.next/
+frontend/out/
+.next/
+out/
+build/
+dist/
+
+# Local databases & artifacts
+*.db
+*.sqlite3
+tierlens.db
+artifacts/*.png
+artifacts/*.apk
+artifacts/*.har
+!artifacts/.gitkeep
+
+# Environment variables
+.env
+!.env.example
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+celerybeat-schedule
+celerybeat.pid

@@ -1,0 +1,115 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tierlens-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tierlens}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tierlens_secure_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-tierlens_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tierlens} -d ${POSTGRES_DB:-tierlens_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  neo4j:
+    image: neo4j:5.20-community
+    container_name: tierlens-neo4j
+    restart: always
+    environment:
+      NEO4J_AUTH: ${NEO4J_AUTH:-neo4j/tierlens_graph_pass}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+    ports:
+      - "7474:7474" # HTTP Browser UI
+      - "7687:7687" # Bolt protocol
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: tierlens-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tierlens-backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - test_artifacts:/app/artifacts
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tierlens-celery-worker
+    restart: always
+    command: celery -A app.workers.celery_app.celery worker --loglevel=info --concurrency=2
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/app
+      - test_artifacts:/app/artifacts
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: tierlens-frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+
+volumes:
+  postgres_data:
+  neo4j_data:
+  redis_data:
+  test_artifacts:
