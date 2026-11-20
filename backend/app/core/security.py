@@ -2,7 +2,7 @@ import ipaddress
 import socket
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from fastapi import HTTPException, status
@@ -122,3 +122,15 @@ def validate_target_url(url: str) -> str:
             )
 
     return url.strip()
+
+
+def validate_redirect_url(base_url: str, location_header: str) -> str:
+    """
+    Validates redirect destinations against SSRF and private network access.
+    Handles relative and absolute location targets.
+    """
+    if not location_header or not str(location_header).strip():
+        return base_url
+    target = urljoin(base_url, str(location_header).strip())
+    return validate_target_url(target)
+

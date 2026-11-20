@@ -73,6 +73,8 @@ export default function TierLensApp() {
     status: string;
     stage: string;
     progress_message: string;
+    error_category?: string | null;
+    error?: string | null;
   } | null>(null);
   const [testResult, setTestResult] = useState<any>(null);
   const [comparisonData, setComparisonData] = useState<any>(null);
@@ -193,10 +195,12 @@ export default function TierLensApp() {
             status: statusRes.status,
             stage: statusRes.stage,
             progress_message: statusRes.progress_message,
+            error_category: statusRes.error_category,
+            error: statusRes.error,
           });
           setTestStep(`[${statusRes.status}] ${statusRes.stage}: ${statusRes.progress_message}`);
 
-          if (statusRes.status === "COMPLETED") {
+          if (statusRes.status === "COMPLETED" || statusRes.status === "COMPLETED_WITH_WARNINGS") {
             finished = true;
             setTestResult(statusRes);
 
@@ -224,7 +228,18 @@ export default function TierLensApp() {
             }
           } else if (statusRes.status === "FAILED") {
             finished = true;
-            throw new Error(statusRes.error || statusRes.progress_message || "Background execution failed.");
+            setTestResult(statusRes);
+            const errMsg = statusRes.error_category 
+              ? `[${statusRes.error_category}] ${statusRes.progress_message || statusRes.error}`
+              : (statusRes.error || statusRes.progress_message || "Execution halted.");
+            setErrorBanner(errMsg);
+            if (statusRes.test_run_id) {
+              try {
+                const recs = await ApiClient.getRunRecommendations(statusRes.test_run_id);
+                setRecommendations(recs);
+                setActiveTab("failures");
+              } catch (_) {}
+            }
           } else if (statusRes.status === "CANCELLED") {
             finished = true;
             setErrorBanner("Test execution was cancelled.");
@@ -703,13 +718,19 @@ export default function TierLensApp() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono uppercase ${
-                          activeJob.status === "COMPLETED" ? "bg-emerald-100 text-emerald-800" :
-                          activeJob.status === "FAILED" ? "bg-red-100 text-red-800" :
-                          activeJob.status === "RUNNING" ? "bg-blue-100 text-blue-800" :
-                          "bg-amber-100 text-amber-800"
+                          activeJob.status === "COMPLETED" ? "bg-emerald-100 text-emerald-800 border border-emerald-300" :
+                          activeJob.status === "COMPLETED_WITH_WARNINGS" ? "bg-amber-100 text-amber-800 border border-amber-300" :
+                          activeJob.status === "FAILED" ? "bg-red-100 text-red-800 border border-red-300" :
+                          activeJob.status === "RUNNING" ? "bg-blue-100 text-blue-800 border border-blue-300" :
+                          "bg-slate-100 text-slate-800"
                         }`}>
-                          {activeJob.status}
+                          {activeJob.status.replace(/_/g, " ")}
                         </span>
+                        {activeJob.error_category && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded font-mono uppercase bg-purple-100 text-purple-800 border border-purple-200">
+                            {activeJob.error_category}
+                          </span>
+                        )}
                         <button
                           onClick={handleCancelJob}
                           disabled={isCancelling}
@@ -728,6 +749,12 @@ export default function TierLensApp() {
                         <span className="font-semibold text-slate-500">Status Detail:</span>
                         <span className="text-slate-600">{activeJob.progress_message}</span>
                       </div>
+                      {activeJob.error && (
+                        <div className="flex items-start gap-2 pt-1 text-[11px] text-rose-700 bg-rose-50 p-2 rounded border border-rose-200">
+                          <span className="font-semibold">Diagnostic:</span>
+                          <span>{activeJob.error}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -928,25 +955,51 @@ export default function TierLensApp() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {comparisonData.entry_level_run.failures.map((fail: any) => (
-                      <div key={fail.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200 font-mono text-xs">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="px-2 py-0.5 rounded text-[10px] bg-red-100 text-red-700 border border-red-200 font-bold">
-                            {fail.failure_type}
-                          </span>
-                          <span className="text-[10px] text-slate-500">
-                            Sig: {fail.error_signature}
-                          </span>
-                        </div>
-                        <h4 className="font-bold text-slate-900 text-sm mb-1">{fail.title}</h4>
-                        <p className="text-slate-600 text-[11px] mb-2">{fail.message}</p>
-                        {fail.url_or_file && (
-                          <div className="text-[10px] text-blue-700 truncate">
-                            Source: {fail.url_or_file}
+                    {comparisonData.entry_level_run.failures.map((fail: any) => {
+                      const getCategoryBadge = (type: string) => {
+                        switch (type) {
+                          case "TARGET_APPLICATION_ERROR":
+                          case "JS_ERROR":
+                            return "bg-purple-100 text-purple-700 border-purple-200";
+                          case "NETWORK_ERROR":
+                            return "bg-rose-100 text-rose-700 border-rose-200";
+                          case "HTTP_ERROR":
+                          case "HTTP_FAILURE":
+                            return "bg-blue-100 text-blue-700 border-blue-200";
+                          case "BROWSER_INFRASTRUCTURE_ERROR":
+                            return "bg-slate-200 text-slate-800 border-slate-300";
+                          case "ACCESS_RESTRICTION":
+                            return "bg-orange-100 text-orange-800 border-orange-200";
+                          case "NAVIGATION_TIMEOUT":
+                          case "PERFORMANCE_REGRESSION":
+                            return "bg-amber-100 text-amber-800 border-amber-200";
+                          case "SSL_ERROR":
+                            return "bg-yellow-100 text-yellow-800 border-yellow-200";
+                          default:
+                            return "bg-red-100 text-red-700 border-red-200";
+                        }
+                      };
+
+                      return (
+                        <div key={fail.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200 font-mono text-xs">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold border ${getCategoryBadge(fail.failure_type)}`}>
+                              {fail.failure_type}
+                            </span>
+                            <span className="text-[10px] text-slate-500">
+                              Sig: {fail.error_signature}
+                            </span>
                           </div>
-                        )}
-                      </div>
-                    ))}
+                          <h4 className="font-bold text-slate-900 text-sm mb-1">{fail.title}</h4>
+                          <p className="text-slate-600 text-[11px] mb-2">{fail.message}</p>
+                          {fail.url_or_file && (
+                            <div className="text-[10px] text-blue-700 truncate">
+                              Source: {fail.url_or_file}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

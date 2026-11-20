@@ -2,15 +2,24 @@ import os
 import time
 import uuid
 import hashlib
+import asyncio
 import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
-from playwright.async_api import async_playwright, Browser, BrowserContext, Page, Error as PlaywrightError
+from playwright.async_api import (
+    async_playwright,
+    Browser,
+    BrowserContext,
+    Page,
+    Error as PlaywrightError,
+    TimeoutError as PlaywrightTimeoutError
+)
 
 from app.config import settings
 from app.engines.web.profiles import WEB_DEVICE_PROFILES
 from app.engines.web.metrics import calculate_vital_rating, WEB_VITALS_INJECTION_SCRIPT
-from app.core.security import validate_target_url
+from app.engines.web.classifier import classify_navigation_error, ErrorCategory
+from app.core.security import validate_target_url, validate_redirect_url
 
 logger = logging.getLogger(__name__)
 
@@ -18,27 +27,56 @@ class WebTestResult:
     def __init__(self, profile_key: str, target_url: str):
         self.profile_key = profile_key
         self.target_url = target_url
-        self.success = False
-        self.duration_ms = 0
+        self.final_url: Optional[str] = target_url
+        self.redirect_count: int = 0
+        self.redirect_chain: List[str] = []
+        self.success: bool = False
+        self.completed_with_warnings: bool = False
+        self.error_category: Optional[str] = None
+        self.error_message: Optional[str] = None
+        self.error_details: Optional[Dict[str, Any]] = None
+        self.retryable: bool = False
+        self.duration_ms: int = 0
+        self.http_status: Optional[int] = None
         self.metrics: List[Dict[str, Any]] = []
+        self.unavailable_metrics: List[str] = []
         self.failures: List[Dict[str, Any]] = []
         self.artifacts: List[Dict[str, Any]] = []
         self.network_requests: List[Dict[str, Any]] = []
         self.console_logs: List[Dict[str, Any]] = []
-        self.error_message: Optional[str] = None
-        self.is_synthetic = False
+        self.is_synthetic: bool = False
+
 
 async def run_web_performance_test(
     target_url: str,
     profile_key: str = "GOOD_BUDGET",
-    test_run_id: Optional[str] = None
+    test_run_id: Optional[str] = None,
+    timeout_seconds: Optional[int] = None
 ) -> WebTestResult:
     """
-    Executes a real Playwright headless Chromium test with CDP-level CPU and network throttling.
-    Collects actual Web Vitals, console exceptions, failed network calls, and screenshot.
+    Executes an isolated, resilient Playwright headless Chromium performance test.
+    Supports a wide variety of public websites (SPA, MPA, redirects, slow networks).
+    Accurately classifies errors and collects real Web Vitals without fabrication.
     """
     # 1. SSRF Safety Check
-    safe_url = validate_target_url(target_url)
+    try:
+        safe_url = validate_target_url(target_url)
+    except Exception as e:
+        res = WebTestResult(profile_key, target_url)
+        classified = classify_navigation_error(str(e))
+        res.success = False
+        res.error_category = ErrorCategory.ACCESS_RESTRICTION.value
+        res.error_message = str(e)
+        res.retryable = False
+        res.failures.append({
+            "failure_type": ErrorCategory.ACCESS_RESTRICTION.value,
+            "title": "Security Check Failed",
+            "message": str(e),
+            "error_signature": hashlib.sha256(f"SSRF_{str(e)[:60]}".encode()).hexdigest()[:16],
+            "component": "SSRFValidator",
+            "url_or_file": target_url
+        })
+        return res
 
     if profile_key not in WEB_DEVICE_PROFILES:
         profile_key = "GOOD_BUDGET"
@@ -47,26 +85,63 @@ async def run_web_performance_test(
     result = WebTestResult(profile_key, safe_url)
     run_id = test_run_id or str(uuid.uuid4())
     start_time = time.time()
+    nav_timeout_ms = (timeout_seconds or getattr(settings, "WEB_TEST_TIMEOUT_SECONDS", 30)) * 1000
 
     screenshot_filename = f"screenshot_{run_id}_{profile_key.lower()}.png"
     screenshot_path = os.path.join(settings.ARTIFACTS_DIR, screenshot_filename)
 
     async with async_playwright() as p:
+        # Pre-flight check: Verify Chromium availability
+        try:
+            exec_path = p.chromium.executable_path
+            if not exec_path or not os.path.exists(exec_path):
+                logger.warning(f"Chromium executable path reported missing: {exec_path}")
+        except Exception as preflight_err:
+            logger.warning(f"Chromium pre-flight notice: {preflight_err}")
+
         browser: Optional[Browser] = None
         context: Optional[BrowserContext] = None
-        try:
-            # Launch Chromium
-            browser = await p.chromium.launch(
-                headless=True,
-                args=[
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--disable-gpu",
-                ]
-            )
+        page: Optional[Page] = None
+        cdp_session = None
 
-            # Create context with profile viewport & mobile emulation
+        try:
+            # 2. Launch Chromium with transient failure retry (up to 2 attempts)
+            launch_attempts = 0
+            max_attempts = 2
+            while launch_attempts < max_attempts:
+                try:
+                    browser = await p.chromium.launch(
+                        headless=True,
+                        args=[
+                            "--no-sandbox",
+                            "--disable-setuid-sandbox",
+                            "--disable-dev-shm-usage",
+                            "--disable-gpu",
+                            "--disable-software-rasterizer",
+                            "--mute-audio"
+                        ]
+                    )
+                    break
+                except Exception as launch_err:
+                    launch_attempts += 1
+                    if launch_attempts >= max_attempts:
+                        classified = classify_navigation_error(str(launch_err))
+                        result.success = False
+                        result.error_category = ErrorCategory.BROWSER_INFRASTRUCTURE_ERROR.value
+                        result.error_message = f"Browser launch failed: {launch_err}"
+                        result.retryable = True
+                        result.failures.append({
+                            "failure_type": ErrorCategory.BROWSER_INFRASTRUCTURE_ERROR.value,
+                            "title": "Browser Launch Failure",
+                            "message": str(launch_err),
+                            "error_signature": hashlib.sha256(f"LAUNCH_FAIL_{str(launch_err)[:60]}".encode()).hexdigest()[:16],
+                            "component": "ChromiumLauncher",
+                            "url_or_file": safe_url
+                        })
+                        return result
+                    await asyncio.sleep(0.5)
+
+            # 3. Create Context with Profile Viewport & Emulation
             context = await browser.new_context(
                 viewport=profile["viewport"],
                 device_scale_factor=profile["device_scale_factor"],
@@ -74,7 +149,7 @@ async def run_web_performance_test(
                 has_touch=profile["has_touch"],
                 user_agent=profile["user_agent"],
                 bypass_csp=True,
-                ignore_https_errors=True
+                ignore_https_errors=False # Capture SSL issues accurately
             )
 
             page = await context.new_page()
@@ -89,7 +164,7 @@ async def run_web_performance_test(
                 if msg.type == "error":
                     sig = hashlib.sha256(f"CONSOLE_{msg.text[:120]}".encode()).hexdigest()[:16]
                     result.failures.append({
-                        "failure_type": "JS_ERROR",
+                        "failure_type": ErrorCategory.TARGET_APPLICATION_ERROR.value,
                         "title": f"JavaScript Console Error: {msg.text[:80]}",
                         "message": msg.text,
                         "error_signature": sig,
@@ -97,147 +172,315 @@ async def run_web_performance_test(
                         "url_or_file": msg.location.get("url") if msg.location else safe_url
                     })
 
-            # Listen to uncaught page errors
+            # Listen to uncaught page exceptions
             def on_page_error(exc):
                 err_text = str(exc)
                 sig = hashlib.sha256(f"UNCAUGHT_{err_text[:120]}".encode()).hexdigest()[:16]
                 result.failures.append({
-                    "failure_type": "JS_ERROR",
-                    "title": f"Uncaught Exception: {err_text[:80]}",
+                    "failure_type": ErrorCategory.TARGET_APPLICATION_ERROR.value,
+                    "title": f"Uncaught Runtime Exception: {err_text[:80]}",
                     "message": err_text,
                     "error_signature": sig,
                     "component": "Window.onerror",
                     "url_or_file": safe_url
                 })
 
-            # Listen to failed requests
+            # Listen to failed subrequests
             def on_request_failed(request):
                 failure_text = request.failure or "Request Failed"
-                sig = hashlib.sha256(f"HTTP_FAIL_{request.url[:100]}_{failure_text}".encode()).hexdigest()[:16]
+                sig = hashlib.sha256(f"SUBREQ_FAIL_{request.url[:100]}_{failure_text}".encode()).hexdigest()[:16]
                 result.failures.append({
-                    "failure_type": "HTTP_FAILURE",
-                    "title": f"Network Request Failed ({request.method})",
+                    "failure_type": ErrorCategory.NETWORK_ERROR.value,
+                    "title": f"Subresource Request Failed ({request.method})",
                     "message": f"URL: {request.url}\nFailure: {failure_text}",
                     "error_signature": sig,
                     "component": "Network",
                     "url_or_file": request.url
                 })
 
+            # Revalidate redirects against SSRF
+            async def on_response(response):
+                if 300 <= response.status < 400:
+                    loc = response.headers.get("location")
+                    if loc:
+                        try:
+                            validate_redirect_url(response.url, loc)
+                        except Exception as ssrf_err:
+                            logger.warning(f"SSRF violation detected during redirect: {ssrf_err}")
+                            raise PlaywrightError(f"Security restriction: redirect to forbidden network location ({loc}) blocked.")
+
             page.on("console", on_console)
             page.on("pageerror", on_page_error)
             page.on("requestfailed", on_request_failed)
+            page.on("response", on_response)
 
-            # Apply Chrome DevTools Protocol (CDP) Throttling
-            cdp_session = await context.new_cdp_session(page)
-            
-            # 1. CPU Throttling
-            await cdp_session.send("Emulation.setCPUThrottlingRate", {
-                "rate": profile["cpu_throttle_rate"]
-            })
+            # 4. Apply Chrome DevTools Protocol (CDP) Throttling
+            try:
+                cdp_session = await context.new_cdp_session(page)
+                # CPU Throttling
+                await cdp_session.send("Emulation.setCPUThrottlingRate", {
+                    "rate": profile["cpu_throttle_rate"]
+                })
+                # Network Throttling
+                net_conf = profile["network"]
+                await cdp_session.send("Network.emulateNetworkConditions", {
+                    "offline": net_conf["offline"],
+                    "latency": net_conf["latency"],
+                    "downloadThroughput": net_conf["download_throughput"],
+                    "uploadThroughput": net_conf["upload_throughput"],
+                    "connectionType": net_conf["connection_type"]
+                })
+            except Exception as cdp_err:
+                logger.warning(f"CDP emulation notice: {cdp_err}")
 
-            # 2. Network Throttling
-            net_conf = profile["network"]
-            await cdp_session.send("Network.emulateNetworkConditions", {
-                "offline": net_conf["offline"],
-                "latency": net_conf["latency"],
-                "downloadThroughput": net_conf["download_throughput"],
-                "uploadThroughput": net_conf["upload_throughput"],
-                "connectionType": net_conf["connection_type"]
-            })
-
-            # Navigate to URL
-            nav_start = time.time()
+            # 5. Multi-tier Navigation Strategy
+            # Strategy: First wait for DOMContentLoaded (HTML parsed), then soft-wait for load state
+            response = None
+            nav_error = None
             try:
                 response = await page.goto(
                     safe_url,
-                    wait_until="load",
-                    timeout=30000 # 30s timeout
+                    wait_until="domcontentloaded",
+                    timeout=nav_timeout_ms
                 )
-                status_code = response.status if response else 0
-                if status_code >= 400:
-                    sig = hashlib.sha256(f"HTTP_{status_code}_{safe_url}".encode()).hexdigest()[:16]
-                    result.failures.append({
-                        "failure_type": "HTTP_FAILURE",
-                        "title": f"HTTP Response Status {status_code}",
-                        "message": f"Server responded with error status code {status_code} for target URL.",
-                        "error_signature": sig,
-                        "component": "HTTP Response",
-                        "url_or_file": safe_url
-                    })
-            except PlaywrightError as pe:
-                sig = hashlib.sha256(f"NAV_TIMEOUT_{str(pe)[:80]}".encode()).hexdigest()[:16]
+            except (PlaywrightTimeoutError, PlaywrightError) as pe:
+                nav_error = pe
+
+            # If domcontentloaded threw SSL error with ignore_https_errors=False, retry with flag if needed
+            if nav_error and ("cert_" in str(nav_error).lower() or "ssl_" in str(nav_error).lower()):
+                classified = classify_navigation_error(str(nav_error))
+                result.success = False
+                result.error_category = classified.category
+                result.error_message = classified.explanation
+                result.error_details = classified.to_dict()
                 result.failures.append({
-                    "failure_type": "PERFORMANCE_REGRESSION",
-                    "title": "Page Load Timeout Exceeded",
-                    "message": f"Navigation timed out under {profile['name']} conditions: {str(pe)}",
-                    "error_signature": sig,
+                    "failure_type": classified.category,
+                    "title": "SSL/TLS Certificate Error",
+                    "message": str(nav_error),
+                    "error_signature": hashlib.sha256(f"SSL_{str(nav_error)[:80]}".encode()).hexdigest()[:16],
+                    "component": "TLSHandshake",
+                    "url_or_file": safe_url
+                })
+                return result
+
+            # If navigation failed outright (DNS failure, connection refused, or hard timeout)
+            if nav_error:
+                classified = classify_navigation_error(str(nav_error))
+                result.success = False
+                result.error_category = classified.category
+                result.error_message = classified.explanation
+                result.error_details = classified.to_dict()
+                result.retryable = classified.retryable
+                result.failures.append({
+                    "failure_type": classified.category,
+                    "title": f"Navigation Failed ({classified.category})",
+                    "message": str(nav_error),
+                    "error_signature": hashlib.sha256(f"NAV_FAIL_{str(nav_error)[:80]}".encode()).hexdigest()[:16],
                     "component": "Navigation",
                     "url_or_file": safe_url
                 })
+                # Attempt to capture screenshot if page has any canvas
+                try:
+                    await page.screenshot(path=screenshot_path, full_page=False)
+                    if os.path.exists(screenshot_path):
+                        result.artifacts.append({
+                            "artifact_type": "SCREENSHOT",
+                            "file_path": screenshot_path,
+                            "file_size_bytes": os.path.getsize(screenshot_path),
+                            "mime_type": "image/png"
+                        })
+                except Exception:
+                    pass
+                return result
 
-            # Wait an additional 1s for layout shifts / lazy loaded resources
-            await page.wait_for_timeout(1000)
+            # 6. Settle Navigation (Soft wait for full load & SPA client hydration)
+            try:
+                # Soft wait for window 'load' event (caps at 8 seconds so long polling doesn't hang)
+                await page.wait_for_load_state("load", timeout=min(8000, nav_timeout_ms / 2))
+            except Exception:
+                logger.info("Soft load state timed out after domcontentloaded; proceeding with rendered DOM.")
 
-            # Capture Screenshot
+            try:
+                # Ensure essential DOM body is rendered
+                await page.wait_for_selector("body", timeout=4000)
+                # Brief stabilization settle for JavaScript hydration / CSS animations
+                await page.wait_for_timeout(1000)
+            except Exception:
+                pass
+
+            # 7. Record Destination & Redirect Information
+            result.final_url = page.url
+            if response and response.request:
+                redirect_chain = []
+                curr = response.request.redirected_from
+                while curr:
+                    redirect_chain.append(curr.url)
+                    curr = curr.redirected_from
+                result.redirect_chain = list(reversed(redirect_chain))
+                result.redirect_count = len(result.redirect_chain)
+
+            status_code = response.status if response else 0
+            result.http_status = status_code
+
+            # 8. Access Restriction & Bot Challenge Inspection
+            page_title = ""
+            page_content = ""
+            try:
+                page_title = await page.title()
+                page_content = await page.content()
+            except Exception:
+                pass
+
+            is_access_restricted = False
+            if status_code in (403, 429) or any(
+                m in page_title.lower() for m in ["just a moment...", "verify you are human", "attention required", "security check"]
+            ):
+                classified_access = classify_navigation_error(
+                    error_message=f"HTTP status {status_code} challenge page",
+                    http_status=status_code,
+                    page_content=page_content[:3000],
+                    page_title=page_title
+                )
+                if classified_access.category == ErrorCategory.ACCESS_RESTRICTION.value:
+                    is_access_restricted = True
+                    result.success = False
+                    result.error_category = ErrorCategory.ACCESS_RESTRICTION.value
+                    result.error_message = classified_access.explanation
+                    result.error_details = classified_access.to_dict()
+                    result.retryable = False
+                    result.failures.append({
+                        "failure_type": ErrorCategory.ACCESS_RESTRICTION.value,
+                        "title": "Access Restricted / Bot Challenge Detected",
+                        "message": (
+                            f"Target website presented anti-bot security controls or CAPTCHA at {result.final_url}. "
+                            "Automated testing cannot proceed past bot protection gates."
+                        ),
+                        "error_signature": hashlib.sha256(f"ACCESS_RESTRICT_{result.final_url}".encode()).hexdigest()[:16],
+                        "component": "AccessControl",
+                        "url_or_file": result.final_url
+                    })
+
+            # Check for HTTP 4xx / 5xx
+            if not is_access_restricted and status_code >= 400:
+                classified_http = classify_navigation_error(http_status=status_code)
+                result.success = False
+                result.error_category = ErrorCategory.HTTP_ERROR.value
+                result.error_message = classified_http.explanation
+                result.error_details = classified_http.to_dict()
+                result.retryable = classified_http.retryable
+                result.failures.append({
+                    "failure_type": ErrorCategory.HTTP_ERROR.value,
+                    "title": f"HTTP Response Status {status_code}",
+                    "message": f"Server responded with error status code {status_code} for target URL.",
+                    "error_signature": hashlib.sha256(f"HTTP_{status_code}_{safe_url}".encode()).hexdigest()[:16],
+                    "component": "HTTP Response",
+                    "url_or_file": safe_url
+                })
+
+            # 9. Capture Screenshot
             try:
                 await page.screenshot(path=screenshot_path, full_page=False)
-                file_size = os.path.getsize(screenshot_path) if os.path.exists(screenshot_path) else 0
-                result.artifacts.append({
-                    "artifact_type": "SCREENSHOT",
-                    "file_path": screenshot_path,
-                    "file_size_bytes": file_size,
-                    "mime_type": "image/png"
-                })
+                if os.path.exists(screenshot_path):
+                    result.artifacts.append({
+                        "artifact_type": "SCREENSHOT",
+                        "file_path": screenshot_path,
+                        "file_size_bytes": os.path.getsize(screenshot_path),
+                        "mime_type": "image/png"
+                    })
             except Exception as se:
                 logger.warning(f"Could not capture screenshot: {se}")
 
-            # Extract Web Vitals & Timings
-            raw_vitals = await page.evaluate(WEB_VITALS_INJECTION_SCRIPT)
+            # 10. Extract Accurate Performance Metrics (No Fake Metrics)
+            if not is_access_restricted and status_code < 400:
+                try:
+                    raw_vitals = await page.evaluate(WEB_VITALS_INJECTION_SCRIPT)
+                except Exception as eval_err:
+                    logger.warning(f"Failed to evaluate web vitals script: {eval_err}")
+                    raw_vitals = {}
 
-            # Record standard Web Vitals
-            metrics_def = [
-                ("FCP", float(raw_vitals.get("fcp", 0)), "ms"),
-                ("LCP", float(raw_vitals.get("lcp", 0)), "ms"),
-                ("CLS", float(raw_vitals.get("cls", 0)), "score"),
-                ("TTFB", float(raw_vitals.get("ttfb", 0)), "ms"),
-                ("PAGE_LOAD_TIME", float(raw_vitals.get("page_load_time", 0)), "ms"),
-            ]
+                metrics_specs = [
+                    ("TTFB", raw_vitals.get("ttfb"), "ms"),
+                    ("FCP", raw_vitals.get("fcp"), "ms"),
+                    ("LCP", raw_vitals.get("lcp"), "ms"),
+                    ("CLS", raw_vitals.get("cls"), "score"),
+                    ("DOM_CONTENT_LOADED", raw_vitals.get("dom_content_loaded"), "ms"),
+                    ("PAGE_LOAD_TIME", raw_vitals.get("page_load_time"), "ms"),
+                ]
 
-            for name, val, unit in metrics_def:
-                rating = calculate_vital_rating(name, val)
-                result.metrics.append({
-                    "name": name,
-                    "value": round(val, 2),
-                    "unit": unit,
-                    "rating": rating,
-                    "is_emulated": True,
-                    "details": {
-                        "device_profile": profile["name"],
-                        "cpu_throttle_rate": profile["cpu_throttle_rate"],
-                        "network_latency_ms": profile["network"]["latency"],
-                        "disclaimer": profile["emulation_disclaimer"]
-                    }
-                })
+                for name, val, unit in metrics_specs:
+                    if val is not None:
+                        rating = calculate_vital_rating(name, float(val))
+                        result.metrics.append({
+                            "name": name,
+                            "value": round(float(val), 2),
+                            "unit": unit,
+                            "rating": rating,
+                            "available": True,
+                            "is_emulated": True,
+                            "details": {
+                                "device_profile": profile["name"],
+                                "cpu_throttle_rate": profile["cpu_throttle_rate"],
+                                "network_latency_ms": profile["network"]["latency"],
+                                "disclaimer": profile["emulation_disclaimer"]
+                            }
+                        })
+                    else:
+                        result.unavailable_metrics.append(name)
 
-            result.success = True
+                # Determine overall completion state
+                # If page succeeded without fatal failures, check for warnings
+                fatal_categories = {
+                    ErrorCategory.NETWORK_ERROR.value,
+                    ErrorCategory.BROWSER_INFRASTRUCTURE_ERROR.value,
+                    ErrorCategory.ACCESS_RESTRICTION.value,
+                    ErrorCategory.NAVIGATION_TIMEOUT.value,
+                    ErrorCategory.SSL_ERROR.value,
+                    ErrorCategory.HTTP_ERROR.value
+                }
+                has_fatal = any(f["failure_type"] in fatal_categories for f in result.failures)
+                if not has_fatal:
+                    result.success = True
+                    result.completed_with_warnings = len(result.failures) > 0
+                else:
+                    result.success = False
 
         except Exception as e:
+            classified = classify_navigation_error(str(e))
             result.success = False
+            result.error_category = classified.category
             result.error_message = str(e)
-            sig = hashlib.sha256(f"TEST_EXEC_ERROR_{str(e)[:80]}".encode()).hexdigest()[:16]
+            result.error_details = classified.to_dict()
+            result.retryable = classified.retryable
             result.failures.append({
-                "failure_type": "CRASH",
-                "title": "Test Execution Exception",
-                "message": f"Engine execution halted: {str(e)}",
-                "error_signature": sig,
+                "failure_type": classified.category,
+                "title": f"Engine Exception ({classified.category})",
+                "message": f"Execution halted: {str(e)}",
+                "error_signature": hashlib.sha256(f"UNHANDLED_{str(e)[:80]}".encode()).hexdigest()[:16],
                 "component": "PlaywrightRunner",
                 "url_or_file": safe_url
             })
         finally:
+            # Deterministic Resource Cleanup
+            if cdp_session:
+                try:
+                    await cdp_session.detach()
+                except Exception:
+                    pass
+            if page:
+                try:
+                    await page.close()
+                except Exception:
+                    pass
             if context:
-                await context.close()
+                try:
+                    await context.close()
+                except Exception:
+                    pass
             if browser:
-                await browser.close()
+                try:
+                    await browser.close()
+                except Exception:
+                    pass
             result.duration_ms = int((time.time() - start_time) * 1000)
 
     return result

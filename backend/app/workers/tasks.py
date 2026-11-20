@@ -59,7 +59,13 @@ async def _execute_single_tier(
     )
 
     # Update TestRun status & duration
-    test_run.status = TestStatus.COMPLETED.value if result.success else TestStatus.FAILED.value
+    if result.success and result.completed_with_warnings:
+        test_run.status = TestStatus.COMPLETED_WITH_WARNINGS.value
+    elif result.success:
+        test_run.status = TestStatus.COMPLETED.value
+    else:
+        test_run.status = TestStatus.FAILED.value
+
     test_run.duration_ms = result.duration_ms
     test_run.completed_at = datetime.now(timezone.utc)
     test_run.failure_count = len(result.failures)
@@ -243,13 +249,30 @@ async def orchestrate_web_test_job(
                         entry_level_run_id=run_el.id
                     )
 
-                    # Complete
+                    # Complete Dual Comparison
                     duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
+                    has_warnings = (
+                        run_gb.status == TestStatus.COMPLETED_WITH_WARNINGS.value or
+                        run_el.status == TestStatus.COMPLETED_WITH_WARNINGS.value
+                    )
+                    has_failed = (
+                        run_gb.status == TestStatus.FAILED.value or
+                        run_el.status == TestStatus.FAILED.value
+                    )
+                    final_status = (
+                        JobState.FAILED.value if has_failed else (
+                            JobState.COMPLETED_WITH_WARNINGS.value if has_warnings else JobState.COMPLETED.value
+                        )
+                    )
+                    progress_msg = (
+                        "Dual device comparison completed with non-fatal warnings." if has_warnings else
+                        "Dual device comparison completed successfully."
+                    )
                     await job_store.update_job(
                         job_id,
-                        status=JobState.COMPLETED.value,
+                        status=final_status,
                         stage="Completed",
-                        progress_message="Dual device comparison completed successfully.",
+                        progress_message=progress_msg,
                         completed_at=datetime.now(timezone.utc).isoformat(),
                         duration_ms=duration
                     )
@@ -274,12 +297,20 @@ async def orchestrate_web_test_job(
                     )
 
                     duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
+                    single_status = (
+                        JobState.FAILED.value if single_run.status == TestStatus.FAILED.value else (
+                            JobState.COMPLETED_WITH_WARNINGS.value if single_run.status == TestStatus.COMPLETED_WITH_WARNINGS.value else JobState.COMPLETED.value
+                        )
+                    )
+                    primary_fail = single_run.failures[0] if single_run.failures else None
                     await job_store.update_job(
                         job_id,
-                        status=JobState.COMPLETED.value,
+                        status=single_status,
                         stage="Completed",
-                        progress_message=f"Web test for {tier} completed successfully.",
+                        progress_message=f"Web test for {tier} finished ({single_run.failure_summary}).",
                         test_run_id=single_run.id,
+                        error_category=primary_fail.failure_type if (primary_fail and single_status == JobState.FAILED.value) else None,
+                        error=single_run.failure_summary if single_status == JobState.FAILED.value else None,
                         completed_at=datetime.now(timezone.utc).isoformat(),
                         duration_ms=duration
                     )
@@ -307,18 +338,23 @@ async def orchestrate_web_test_job(
             stage="Timeout Exceeded",
             progress_message=f"Execution timed out after {settings.WEB_TEST_TIMEOUT_SECONDS}s.",
             error="Test execution timed out.",
+            error_category="NAVIGATION_TIMEOUT",
             completed_at=datetime.now(timezone.utc).isoformat(),
             duration_ms=duration
         )
     except Exception as e:
         logger.exception(f"Job {job_id} failed with error: {e}")
         duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
+        from app.engines.web.classifier import classify_navigation_error
+        classified = classify_navigation_error(str(e))
         await job_store.update_job(
             job_id,
             status=JobState.FAILED.value,
             stage="Execution Failed",
-            progress_message=f"Error during execution: {str(e)}",
+            progress_message=f"{classified.category}: {classified.explanation}",
             error=str(e),
+            error_category=classified.category,
+            error_details=classified.to_dict(),
             completed_at=datetime.now(timezone.utc).isoformat(),
             duration_ms=duration
         )

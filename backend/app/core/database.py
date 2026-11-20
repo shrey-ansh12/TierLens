@@ -3,6 +3,7 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import create_engine, text, event
+from sqlalchemy.pool import NullPool
 from app.config import settings
 from app.core.db_url import mask_database_url, normalize_database_url
 
@@ -60,15 +61,18 @@ def get_engine():
 
     # 3. Auto mode (Development fallback)
     try:
+        pool_kwargs = {"poolclass": NullPool} if "-pooler" in _active_async_url.lower() else {
+            "pool_size": 5,
+            "max_overflow": 5,
+            "pool_recycle": 300,
+            "pool_pre_ping": True,
+            "pool_timeout": 30.0
+        }
         engine = create_async_engine(
             _active_async_url,
             echo=False,
             future=True,
-            pool_size=5,
-            max_overflow=5,
-            pool_recycle=300,
-            pool_pre_ping=True,
-            pool_timeout=30.0
+            **pool_kwargs
         )
         return engine
     except Exception as e:
@@ -105,20 +109,8 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     try:
         async with AsyncSessionLocal() as session:
             yield session
-    except Exception as e:
-        if fallback_allowed:
-            logger.warning(f"Database session connection failed ({e}). Switching to SQLite fallback...")
-            _active_async_url = settings.SQLITE_DATABASE_URL
-            _active_sync_url = settings.SQLITE_SYNC_DATABASE_URL
-            _using_fallback = True
-            async_engine = configure_sqlite_engine(create_async_engine(_active_async_url, echo=False, future=True, connect_args={"timeout": 30.0}))
-            AsyncSessionLocal.configure(bind=async_engine)
-            async with async_engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
-            async with AsyncSessionLocal() as fallback_session:
-                yield fallback_session
-        else:
-            raise e
+    except Exception:
+        raise
 
 async def check_db_health() -> dict:
     global _active_async_url, _using_fallback

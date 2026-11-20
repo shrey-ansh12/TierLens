@@ -13,6 +13,7 @@ class JobState(str, Enum):
     RUNNING = "RUNNING"
     ANALYZING = "ANALYZING"
     COMPLETED = "COMPLETED"
+    COMPLETED_WITH_WARNINGS = "COMPLETED_WITH_WARNINGS"
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
 
@@ -30,6 +31,11 @@ class JobStatusResponse(BaseModel):
     completed_at: Optional[str] = None
     duration_ms: Optional[int] = None
     error: Optional[str] = None
+    error_category: Optional[str] = None
+    error_details: Optional[Dict[str, Any]] = None
+    final_url: Optional[str] = None
+    redirect_count: Optional[int] = 0
+    metrics_summary: Optional[Dict[str, Any]] = None
     comparison_group_id: Optional[str] = None
     good_budget_run_id: Optional[str] = None
     entry_level_run_id: Optional[str] = None
