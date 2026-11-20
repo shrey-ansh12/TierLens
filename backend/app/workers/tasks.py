@@ -11,7 +11,7 @@ from app.workers.job_store import job_store, JobState
 from app.workers.celery_app import celery_app
 from app.models.relational.entities import (
     DeviceProfile, TestRun, TestMetric, TestFailure, TestArtifact,
-    Recommendation, TestStatus
+    Recommendation, TestStatus, Project, ProjectType
 )
 from app.engines.web.runner import run_web_performance_test
 from app.intelligence.rca_engine import generate_root_cause_analysis
@@ -205,8 +205,29 @@ async def orchestrate_web_test_job(
         timeout_secs = settings.WEB_TEST_TIMEOUT_SECONDS
 
         async def _run_workload():
+            nonlocal project_id
             async with AsyncSessionLocal() as session:
                 from app.api.v1.comparisons import build_comparison_payload, serialize_test_run
+
+                # Ensure project_id is guaranteed
+                if not project_id and workspace_id:
+                    p_stmt = select(Project).where(
+                        Project.workspace_id == workspace_id,
+                        Project.name == target_url
+                    )
+                    p_res = await session.execute(p_stmt)
+                    p_obj = p_res.scalars().first()
+                    if not p_obj:
+                        p_obj = Project(
+                            workspace_id=workspace_id,
+                            name=target_url,
+                            type=ProjectType.WEB.value,
+                            target_url=target_url
+                        )
+                        session.add(p_obj)
+                        await session.commit()
+                        await session.refresh(p_obj)
+                    project_id = p_obj.id
 
                 if mode == "DUAL_COMPARISON":
                     comparison_group_id = job_id
@@ -232,6 +253,10 @@ async def orchestrate_web_test_job(
                         )
                     except Exception as e:
                         gb_error = str(e)
+                        try:
+                            await session.rollback()
+                        except Exception:
+                            pass
                         logger.exception(f"Good Budget tier failed for job {job_id}: {e}")
 
                     await job_store.update_job(
@@ -255,6 +280,10 @@ async def orchestrate_web_test_job(
                         )
                     except Exception as e:
                         el_error = str(e)
+                        try:
+                            await session.rollback()
+                        except Exception:
+                            pass
                         logger.exception(f"Entry-Level tier failed for job {job_id}: {e}")
 
                     await job_store.update_job(
