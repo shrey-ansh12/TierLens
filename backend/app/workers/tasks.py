@@ -148,7 +148,7 @@ async def _execute_single_tier(
         recommendations=rca_items
     )
 
-    return test_run
+    return test_run, result
 
 
 async def orchestrate_web_test_job(
@@ -214,7 +214,7 @@ async def orchestrate_web_test_job(
                         comparison_group_id=comparison_group_id
                     )
 
-                    run_gb = await _execute_single_tier(
+                    run_gb, res_gb = await _execute_single_tier(
                         target_url=target_url,
                         tier_key="GOOD_BUDGET",
                         project_id=project_id,
@@ -231,7 +231,7 @@ async def orchestrate_web_test_job(
                         good_budget_run_id=run_gb.id
                     )
 
-                    run_el = await _execute_single_tier(
+                    run_el, res_el = await _execute_single_tier(
                         target_url=target_url,
                         tier_key="ENTRY_LEVEL",
                         project_id=project_id,
@@ -286,7 +286,7 @@ async def orchestrate_web_test_job(
                         progress_message=f"Simulating {tier} profile under throttled conditions..."
                     )
 
-                    single_run = await _execute_single_tier(
+                    single_run, single_result = await _execute_single_tier(
                         target_url=target_url,
                         tier_key=tier,
                         project_id=project_id,
@@ -302,14 +302,14 @@ async def orchestrate_web_test_job(
                             JobState.COMPLETED_WITH_WARNINGS.value if single_run.status == TestStatus.COMPLETED_WITH_WARNINGS.value else JobState.COMPLETED.value
                         )
                     )
-                    primary_fail = single_run.failures[0] if single_run.failures else None
+                    primary_fail = single_result.failures[0] if (single_result and single_result.failures) else None
                     await job_store.update_job(
                         job_id,
                         status=single_status,
                         stage="Completed",
                         progress_message=f"Web test for {tier} finished ({single_run.failure_summary}).",
                         test_run_id=single_run.id,
-                        error_category=primary_fail.failure_type if (primary_fail and single_status == JobState.FAILED.value) else None,
+                        error_category=primary_fail["failure_type"] if (primary_fail and single_status == JobState.FAILED.value) else None,
                         error=single_run.failure_summary if single_status == JobState.FAILED.value else None,
                         completed_at=datetime.now(timezone.utc).isoformat(),
                         duration_ms=duration

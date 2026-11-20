@@ -166,10 +166,10 @@ class TestRun(Base):
     project = relationship("Project", back_populates="test_runs")
     version = relationship("ApplicationVersion", back_populates="test_runs")
     device_profile = relationship("DeviceProfile", back_populates="test_runs")
-    metrics = relationship("TestMetric", back_populates="test_run", cascade="all, delete-orphan")
-    failures = relationship("TestFailure", back_populates="test_run", cascade="all, delete-orphan")
-    artifacts = relationship("TestArtifact", back_populates="test_run", cascade="all, delete-orphan")
-    recommendations = relationship("Recommendation", back_populates="test_run", cascade="all, delete-orphan")
+    metrics = relationship("TestMetric", back_populates="test_run", cascade="all, delete-orphan", lazy="selectin")
+    failures = relationship("TestFailure", back_populates="test_run", cascade="all, delete-orphan", lazy="selectin")
+    artifacts = relationship("TestArtifact", back_populates="test_run", cascade="all, delete-orphan", lazy="selectin")
+    recommendations = relationship("Recommendation", back_populates="test_run", cascade="all, delete-orphan", lazy="selectin")
 
 
 class TestMetric(Base):
