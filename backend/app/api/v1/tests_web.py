@@ -141,6 +141,29 @@ async def get_web_job_status(
             detail="Access denied: You do not have permission to view this job."
         )
 
+    # Dynamically load comparison or single run payload if completed and missing from in-memory record
+    comp_data = record.get("comparison_data")
+    comp_id = record.get("comparison_group_id")
+    if not comp_data and comp_id:
+        from app.api.v1.comparisons import build_comparison_payload
+        comp_data = await build_comparison_payload(comp_id, db)
+
+    single_data = record.get("single_run_data")
+    test_run_id = record.get("test_run_id")
+    if not single_data and test_run_id:
+        from app.api.v1.comparisons import serialize_test_run
+        stmt = select(TestRun).where(TestRun.id == test_run_id).options(
+            selectinload(TestRun.metrics),
+            selectinload(TestRun.failures),
+            selectinload(TestRun.artifacts),
+            selectinload(TestRun.recommendations),
+            selectinload(TestRun.device_profile)
+        )
+        s_res = await db.execute(stmt)
+        s_run = s_res.scalars().first()
+        if s_run:
+            single_data = serialize_test_run(s_run)
+
     return JobStatusResponse(
         job_id=record["job_id"],
         status=record["status"],
@@ -155,10 +178,18 @@ async def get_web_job_status(
         completed_at=record.get("completed_at"),
         duration_ms=record.get("duration_ms"),
         error=record.get("error"),
-        comparison_group_id=record.get("comparison_group_id"),
+        error_category=record.get("error_category"),
+        error_details=record.get("error_details"),
+        final_url=record.get("final_url"),
+        redirect_count=record.get("redirect_count", 0),
+        metrics_summary=record.get("metrics_summary"),
+        comparison_group_id=comp_id,
         good_budget_run_id=record.get("good_budget_run_id"),
         entry_level_run_id=record.get("entry_level_run_id"),
-        test_run_id=record.get("test_run_id")
+        test_run_id=test_run_id,
+        comparison_data=comp_data,
+        single_run_data=single_data,
+        recommendations=record.get("recommendations") or (comp_data.get("recommendations") if comp_data else None)
     )
 
 

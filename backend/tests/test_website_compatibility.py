@@ -270,3 +270,35 @@ def test_metric_vital_rating_ratings_and_unavailable():
     assert calculate_vital_rating("LCP", None) == "UNAVAILABLE"
     assert calculate_vital_rating("CLS", 0.05) == "GOOD"
     assert calculate_vital_rating("CLS", 0.3) == "POOR"
+
+
+@pytest.mark.asyncio
+async def test_serialize_test_run_immune_to_missing_greenlet():
+    """Verify serialize_test_run succeeds without raising MissingGreenlet on detached/unloaded models."""
+    from app.models.relational.entities import TestRun, DeviceProfile
+    from app.api.v1.comparisons import serialize_test_run
+
+    tr = TestRun(
+        id="test-run-uuid-1234",
+        project_id="test-proj-uuid",
+        status="COMPLETED",
+        target_url="https://scan2eat.food/"
+    )
+    serialized = serialize_test_run(tr)
+    assert serialized is not None
+    assert serialized["id"] == "test-run-uuid-1234"
+    assert serialized["status"] == "COMPLETED"
+    assert serialized["metrics"] == []
+    assert serialized["failures"] == []
+
+
+@pytest.mark.asyncio
+async def test_build_comparison_payload_handles_missing_group():
+    """Verify build_comparison_payload returns None gracefully for nonexistent comparisons."""
+    from app.core.database import AsyncSessionLocal
+    from app.api.v1.comparisons import build_comparison_payload
+
+    async with AsyncSessionLocal() as session:
+        payload = await build_comparison_payload("nonexistent-group-id", session)
+        assert payload is None
+

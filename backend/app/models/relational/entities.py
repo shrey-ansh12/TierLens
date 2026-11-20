@@ -29,6 +29,7 @@ class TestStatus(str, enum.Enum):
     ANALYZING = "ANALYZING"
     COMPLETED = "COMPLETED"
     COMPLETED_WITH_WARNINGS = "COMPLETED_WITH_WARNINGS"
+    PARTIAL = "PARTIAL"
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
 
@@ -163,9 +164,9 @@ class TestRun(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=get_utc_now)
 
-    project = relationship("Project", back_populates="test_runs")
-    version = relationship("ApplicationVersion", back_populates="test_runs")
-    device_profile = relationship("DeviceProfile", back_populates="test_runs")
+    project = relationship("Project", back_populates="test_runs", lazy="selectin")
+    version = relationship("ApplicationVersion", back_populates="test_runs", lazy="selectin")
+    device_profile = relationship("DeviceProfile", back_populates="test_runs", lazy="selectin")
     metrics = relationship("TestMetric", back_populates="test_run", cascade="all, delete-orphan", lazy="selectin")
     failures = relationship("TestFailure", back_populates="test_run", cascade="all, delete-orphan", lazy="selectin")
     artifacts = relationship("TestArtifact", back_populates="test_run", cascade="all, delete-orphan", lazy="selectin")

@@ -111,4 +111,5 @@ class DualComparisonResponse(BaseModel):
     metrics_diff: Dict[str, Dict[str, Any]] = {}
     regressions: List[Dict[str, Any]] = []
     device_specific_failures: List[Dict[str, Any]] = []
+    recommendations: Optional[List[Dict[str, Any]]] = None
     root_cause_summary: Optional[Dict[str, Any]] = None

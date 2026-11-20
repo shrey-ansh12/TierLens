@@ -159,6 +159,7 @@ export default function TierLensApp() {
     e.preventDefault();
     if (!testUrl) return;
 
+    await ensureAuth();
     setErrorBanner(null);
     setIsRunningTest(true);
     setTestStep("Submitting test to background queue...");
@@ -200,31 +201,58 @@ export default function TierLensApp() {
           });
           setTestStep(`[${statusRes.status}] ${statusRes.stage}: ${statusRes.progress_message}`);
 
-          if (statusRes.status === "COMPLETED" || statusRes.status === "COMPLETED_WITH_WARNINGS") {
+          const isSuccessState = ["COMPLETED", "COMPLETED_WITH_WARNINGS", "PARTIAL"].includes(statusRes.status);
+
+          if (isSuccessState) {
             finished = true;
             setTestResult(statusRes);
 
-            if (statusRes.mode === "DUAL_COMPARISON" && statusRes.comparison_group_id) {
-              setTestStep("Loading comparative metrics diff...");
-              const comp = await ApiClient.getComparison(statusRes.comparison_group_id);
-              setComparisonData(comp);
+            // 1. Immediately hydrate comparison data if embedded in response
+            if (statusRes.comparison_data) {
+              setComparisonData(statusRes.comparison_data);
+              if (statusRes.comparison_data.recommendations) {
+                setRecommendations(statusRes.comparison_data.recommendations);
+              }
+            }
 
-              if (comp.entry_level_run?.id) {
-                const recs = await ApiClient.getRunRecommendations(comp.entry_level_run.id);
+            // 2. Hydrate single run data if embedded
+            if (statusRes.single_run_data) {
+              if (statusRes.single_run_data.recommendations) {
+                setRecommendations(statusRes.single_run_data.recommendations);
+              }
+            }
+
+            // 3. Fallback to separate endpoints if not embedded
+            if (statusRes.mode === "DUAL_COMPARISON" && statusRes.comparison_group_id && !statusRes.comparison_data) {
+              try {
+                setTestStep("Loading comparative metrics diff...");
+                const comp = await ApiClient.getComparison(statusRes.comparison_group_id);
+                setComparisonData(comp);
+
+                if (comp.entry_level_run?.id) {
+                  const recs = await ApiClient.getRunRecommendations(comp.entry_level_run.id);
+                  setRecommendations(recs);
+                }
+
+                if (comp.entry_level_run?.project_id) {
+                  const g = await ApiClient.getProjectGraph(comp.entry_level_run.project_id);
+                  setGraphData(g);
+                }
+              } catch (loadErr) {
+                console.warn("Could not load external comparison endpoints:", loadErr);
+              }
+            } else if (statusRes.test_run_id && !statusRes.single_run_data) {
+              try {
+                setTestStep("Loading single device recommendations...");
+                const recs = await ApiClient.getRunRecommendations(statusRes.test_run_id);
                 setRecommendations(recs);
+              } catch (loadErr) {
+                console.warn("Could not load recommendations:", loadErr);
               }
+            }
 
-              if (comp.entry_level_run?.project_id) {
-                const g = await ApiClient.getProjectGraph(comp.entry_level_run.project_id);
-                setGraphData(g);
-              }
-
-              setActiveTab("compare");
-            } else if (statusRes.test_run_id) {
-              setTestStep("Loading single device recommendations...");
-              const recs = await ApiClient.getRunRecommendations(statusRes.test_run_id);
-              setRecommendations(recs);
-              setActiveTab("failures");
+            if (statusRes.status === "PARTIAL") {
+              setErrorBanner(`[PARTIAL EXECUTION] ${statusRes.progress_message}`);
             }
           } else if (statusRes.status === "FAILED") {
             finished = true;
@@ -237,7 +265,6 @@ export default function TierLensApp() {
               try {
                 const recs = await ApiClient.getRunRecommendations(statusRes.test_run_id);
                 setRecommendations(recs);
-                setActiveTab("failures");
               } catch (_) {}
             }
           } else if (statusRes.status === "CANCELLED") {
@@ -257,7 +284,6 @@ export default function TierLensApp() {
       setIsRunningTest(false);
       setIsCancelling(false);
       setTestStep(null);
-      setActiveJob(null);
     }
   };
 
@@ -756,6 +782,368 @@ export default function TierLensApp() {
                         </div>
                       )}
                     </div>
+                  </div>
+                )}
+
+                {/* COMPREHENSIVE TEST RESULTS & ANALYSIS VIEW */}
+                {(comparisonData || testResult?.single_run_data || testResult?.metrics_summary) && (
+                  <div className="mt-8 space-y-6 pt-6 border-t border-slate-200">
+                    {/* Results Header */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-xl bg-slate-900 text-white shadow-sm">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono uppercase ${
+                            (testResult?.status === "COMPLETED" || comparisonData) ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40" :
+                            testResult?.status === "PARTIAL" ? "bg-amber-500/20 text-amber-300 border border-amber-500/40" :
+                            "bg-blue-500/20 text-blue-300 border border-blue-500/40"
+                          }`}>
+                            {testResult?.status?.replace(/_/g, " ") || "COMPLETED"}
+                          </span>
+                          <span className="text-xs text-slate-400 font-mono">
+                            Mode: {testResult?.mode || (comparisonData ? "DUAL_COMPARISON" : "SINGLE_RUN")}
+                          </span>
+                        </div>
+                        <h3 className="text-base font-bold text-white mt-1">
+                          Test Results for: <span className="text-blue-400 font-mono">{testResult?.target_url || testUrl}</span>
+                        </h3>
+                        {testResult?.final_url && testResult.final_url !== testResult.target_url && (
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            Final URL after redirects: <span className="font-mono text-slate-300">{testResult.final_url}</span>
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-4 text-xs font-mono text-slate-300">
+                        {testResult?.duration_ms && (
+                          <div>
+                            <span className="text-[10px] text-slate-500 block uppercase">Duration</span>
+                            <span className="font-bold text-white">{(testResult.duration_ms / 1000).toFixed(1)}s</span>
+                          </div>
+                        )}
+                        <div>
+                          <span className="text-[10px] text-slate-500 block uppercase">Completed</span>
+                          <span className="text-slate-300 text-[11px]">
+                            {testResult?.completed_at ? new Date(testResult.completed_at).toLocaleTimeString() : "Just now"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* DUAL COMPARISON RESULTS */}
+                    {comparisonData && (
+                      <div className="space-y-6">
+                        {/* 1. Comparison Bar Chart Visualizer */}
+                        <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm">
+                          <div className="flex items-center justify-between mb-4">
+                            <div>
+                              <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                <GitCompare className="w-4 h-4 text-blue-600" />
+                                Hardware Degradation Differential (Core Web Vitals)
+                              </h4>
+                              <p className="text-[11px] text-slate-500 mt-0.5">
+                                Compares real browser execution between Good Budget (4x CPU, Fast 3G) and Entry-Level (8x CPU, Slow 3G).
+                              </p>
+                            </div>
+                            <span className="text-[10px] font-mono text-slate-500 bg-slate-50 px-2 py-1 rounded border">
+                              Paired Profiling
+                            </span>
+                          </div>
+
+                          <div className="h-64 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={comparisonChartData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                                <XAxis dataKey="name" stroke="#64748B" fontSize={11} />
+                                <YAxis stroke="#64748B" fontSize={11} />
+                                <Tooltip
+                                  contentStyle={{ backgroundColor: "#FFFFFF", borderColor: "#E2E8F0", fontSize: "11px", borderRadius: "8px", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
+                                />
+                                <Bar dataKey="Good Budget" fill="#2563EB" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="Entry-Level" fill="#0284C7" radius={[4, 4, 0, 0]} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+
+                        {/* 2. Side-by-Side Comparison Table */}
+                        <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                          <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                            <Sliders className="w-4 h-4 text-blue-600" /> Side-by-Side Metric Metrics & Delta
+                          </h4>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs">
+                              <thead>
+                                <tr className="border-b border-slate-200 text-slate-500 font-semibold bg-slate-50/50">
+                                  <th className="py-2.5 px-3">Metric</th>
+                                  <th className="py-2.5 px-3 text-blue-700">Good Budget Profile</th>
+                                  <th className="py-2.5 px-3 text-sky-700">Entry-Level Profile</th>
+                                  <th className="py-2.5 px-3">Degradation / Delta</th>
+                                  <th className="py-2.5 px-3">Assessment</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 font-mono">
+                                {Object.entries(comparisonData.metrics_diff || {}).map(([key, val]: [string, any]) => {
+                                  const isRegressed = val.pct_change !== null && val.pct_change >= 25;
+                                  return (
+                                    <tr key={key} className={isRegressed ? "bg-red-50/40" : "hover:bg-slate-50/50"}>
+                                      <td className="py-3 px-3 font-bold text-slate-900">{key}</td>
+                                      <td className="py-3 px-3 text-slate-700 font-semibold">
+                                        {val.good_budget !== null ? `${val.good_budget} ${val.unit}` : "N/A"}
+                                      </td>
+                                      <td className="py-3 px-3 text-slate-700 font-semibold">
+                                        {val.entry_level !== null ? `${val.entry_level} ${val.unit}` : "N/A"}
+                                      </td>
+                                      <td className="py-3 px-3">
+                                        {val.pct_change !== null ? (
+                                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                            isRegressed ? "bg-red-100 text-red-700 border border-red-200" : "bg-emerald-100 text-emerald-700"
+                                          }`}>
+                                            +{val.pct_change}% (+{val.delta} {val.unit})
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400 text-[10px]">Incomplete</span>
+                                        )}
+                                      </td>
+                                      <td className="py-3 px-3 text-[11px]">
+                                        {isRegressed ? (
+                                          <span className="text-red-700 font-sans font-semibold flex items-center gap-1">
+                                            <TrendingDown className="w-3.5 h-3.5" /> Severe Degradation
+                                          </span>
+                                        ) : (
+                                          <span className="text-emerald-700 font-sans font-semibold flex items-center gap-1">
+                                            <Check className="w-3.5 h-3.5" /> Acceptable
+                                          </span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        {/* 3. Paired Profile Detail Cards (Good Budget & Entry-Level) */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* Good Budget Card */}
+                          <div className="p-5 bg-white border border-blue-200 rounded-xl shadow-sm space-y-3">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                              <div>
+                                <h4 className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                                  <Smartphone className="w-4 h-4 text-blue-600" /> Good Budget Tier Results
+                                </h4>
+                                <span className="text-[10px] text-slate-500 font-mono">4x CPU Throttling • Fast 3G • 4GB RAM</span>
+                              </div>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                {comparisonData.good_budget_run?.status || "COMPLETED"}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                              {(comparisonData.good_budget_run?.metrics || []).map((m: any) => (
+                                <div key={m.name} className="p-2.5 bg-slate-50 rounded border border-slate-100">
+                                  <div className="text-[10px] text-slate-500 truncate">{m.name}</div>
+                                  <div className="font-bold text-slate-900 mt-0.5">
+                                    {m.value} <span className="text-[10px] text-slate-500 font-normal">{m.unit}</span>
+                                  </div>
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded mt-1 inline-block ${
+                                    m.rating === "GOOD" ? "bg-emerald-100 text-emerald-800" :
+                                    m.rating === "NEEDS_IMPROVEMENT" ? "bg-amber-100 text-amber-800" :
+                                    m.rating === "POOR" ? "bg-red-100 text-red-800" :
+                                    "bg-slate-100 text-slate-600"
+                                  }`}>
+                                    {m.rating}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-600 space-y-1">
+                              <div className="flex justify-between">
+                                <span>Duration:</span>
+                                <span className="font-mono font-semibold">{comparisonData.good_budget_run?.duration_ms}ms</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Issues Detected:</span>
+                                <span className="font-mono font-semibold">{comparisonData.good_budget_run?.failure_count || 0}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Entry-Level Card */}
+                          <div className="p-5 bg-white border border-sky-200 rounded-xl shadow-sm space-y-3">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                              <div>
+                                <h4 className="text-xs font-bold text-sky-900 flex items-center gap-1.5">
+                                  <Smartphone className="w-4 h-4 text-sky-600" /> Entry-Level Tier Results
+                                </h4>
+                                <span className="text-[10px] text-slate-500 font-mono">8x CPU Throttling • Slow 3G • 2GB RAM</span>
+                              </div>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200">
+                                {comparisonData.entry_level_run?.status || "COMPLETED"}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                              {(comparisonData.entry_level_run?.metrics || []).map((m: any) => (
+                                <div key={m.name} className="p-2.5 bg-slate-50 rounded border border-slate-100">
+                                  <div className="text-[10px] text-slate-500 truncate">{m.name}</div>
+                                  <div className="font-bold text-slate-900 mt-0.5">
+                                    {m.value} <span className="text-[10px] text-slate-500 font-normal">{m.unit}</span>
+                                  </div>
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded mt-1 inline-block ${
+                                    m.rating === "GOOD" ? "bg-emerald-100 text-emerald-800" :
+                                    m.rating === "NEEDS_IMPROVEMENT" ? "bg-amber-100 text-amber-800" :
+                                    m.rating === "POOR" ? "bg-red-100 text-red-800" :
+                                    "bg-slate-100 text-slate-600"
+                                  }`}>
+                                    {m.rating}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-600 space-y-1">
+                              <div className="flex justify-between">
+                                <span>Duration:</span>
+                                <span className="font-mono font-semibold">{comparisonData.entry_level_run?.duration_ms}ms</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Issues Detected:</span>
+                                <span className="font-mono font-semibold">{comparisonData.entry_level_run?.failure_count || 0}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 4. Artifacts & Screenshots Preview */}
+                        {((comparisonData.good_budget_run?.artifacts?.length || 0) > 0 || (comparisonData.entry_level_run?.artifacts?.length || 0) > 0) && (
+                          <div className="p-5 bg-white border border-slate-200 rounded-xl shadow-sm">
+                            <h4 className="text-xs font-bold text-slate-900 mb-3 flex items-center gap-2">
+                              <FileText className="w-4 h-4 text-blue-600" /> Screenshots & Recorded Execution Artifacts
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                              {[...(comparisonData.good_budget_run?.artifacts || []), ...(comparisonData.entry_level_run?.artifacts || [])].map((art: any, idx: number) => (
+                                <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                  <div className="flex items-center gap-2.5">
+                                    <FileCode className="w-4 h-4 text-slate-500" />
+                                    <div>
+                                      <div className="font-bold text-slate-800">{art.artifact_type}</div>
+                                      <div className="text-[10px] text-slate-500 font-mono truncate max-w-xs">{art.file_path}</div>
+                                    </div>
+                                  </div>
+                                  <span className="text-[10px] font-mono text-slate-400">
+                                    {(art.file_size_bytes / 1024).toFixed(1)} KB
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 5. Root Cause Analysis & Recommendations */}
+                        {(recommendations.length > 0 || (comparisonData.recommendations?.length || 0) > 0) && (
+                          <div className="p-5 bg-white border border-slate-200 rounded-xl shadow-sm space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                                <Brain className="w-4 h-4 text-pink-600" /> AI & Rule-Engine Root Cause Analysis
+                              </h4>
+                              <span className="text-[10px] text-slate-500 font-mono">
+                                {(recommendations.length || comparisonData.recommendations?.length)} Actionable Recommendations
+                              </span>
+                            </div>
+
+                            <div className="space-y-3">
+                              {(recommendations.length > 0 ? recommendations : comparisonData.recommendations || []).map((r: any) => (
+                                <div key={r.id || r.title} className="p-4 rounded-lg border border-slate-200 bg-slate-50/50 space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded font-mono uppercase ${
+                                        r.impact === "CRITICAL" ? "bg-red-100 text-red-800" :
+                                        r.impact === "HIGH" ? "bg-amber-100 text-amber-800" :
+                                        "bg-blue-100 text-blue-800"
+                                      }`}>
+                                        {r.impact} IMPACT
+                                      </span>
+                                      <span className="text-xs font-bold text-slate-900">{r.title}</span>
+                                    </div>
+                                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-white border text-slate-700">
+                                      {r.status || "OPEN"}
+                                    </span>
+                                  </div>
+
+                                  <div className="text-xs text-slate-600">
+                                    <span className="font-semibold text-slate-700">Probable Cause: </span>
+                                    {r.probable_cause}
+                                  </div>
+
+                                  <div className="text-xs text-slate-700 bg-white p-2.5 rounded border border-slate-200/80">
+                                    <span className="font-semibold text-blue-700">Remediation: </span>
+                                    {r.remediation}
+                                  </div>
+
+                                  {r.verification_steps && (
+                                    <div className="text-[11px] text-slate-500">
+                                      <span className="font-semibold text-slate-600">Verification: </span>
+                                      {r.verification_steps}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* SINGLE RUN RESULTS (When Single Profile was selected) */}
+                    {!comparisonData && (testResult?.single_run_data || testResult?.metrics_summary) && (
+                      <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm space-y-4">
+                        <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                          <Smartphone className="w-4 h-4 text-blue-600" />
+                          Single Profile Execution Metrics ({testResult?.tier || selectedTier})
+                        </h4>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 font-mono">
+                          {((testResult?.single_run_data?.metrics) || []).map((m: any) => (
+                            <div key={m.name} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                              <div className="text-[10px] text-slate-500 uppercase">{m.name}</div>
+                              <div className="text-base font-bold text-slate-900 mt-0.5">
+                                {m.value} <span className="text-xs font-normal text-slate-500">{m.unit}</span>
+                              </div>
+                              <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded mt-1.5 inline-block ${
+                                m.rating === "GOOD" ? "bg-emerald-100 text-emerald-800" :
+                                m.rating === "NEEDS_IMPROVEMENT" ? "bg-amber-100 text-amber-800" :
+                                m.rating === "POOR" ? "bg-red-100 text-red-800" : "bg-slate-100 text-slate-600"
+                              }`}>
+                                {m.rating}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Single run recommendations */}
+                        {(recommendations.length > 0 || (testResult?.single_run_data?.recommendations?.length || 0) > 0) && (
+                          <div className="pt-4 border-t border-slate-100 space-y-3">
+                            <h5 className="text-xs font-bold text-slate-800">Root Cause Analysis & Remediation</h5>
+                            {(recommendations.length > 0 ? recommendations : testResult?.single_run_data?.recommendations || []).map((r: any) => (
+                              <div key={r.id || r.title} className="p-3 rounded-lg border border-slate-200 bg-slate-50/50 space-y-1.5 text-xs">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-mono">
+                                    {r.impact}
+                                  </span>
+                                  <span className="font-bold text-slate-900">{r.title}</span>
+                                </div>
+                                <p className="text-slate-600">{r.probable_cause}</p>
+                                <p className="text-blue-700 bg-white p-2 rounded border border-slate-200 font-sans">
+                                  <strong>Remediation: </strong>{r.remediation}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

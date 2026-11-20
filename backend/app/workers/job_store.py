@@ -2,7 +2,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -14,6 +14,7 @@ class JobState(str, Enum):
     ANALYZING = "ANALYZING"
     COMPLETED = "COMPLETED"
     COMPLETED_WITH_WARNINGS = "COMPLETED_WITH_WARNINGS"
+    PARTIAL = "PARTIAL"
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
 
@@ -40,6 +41,9 @@ class JobStatusResponse(BaseModel):
     good_budget_run_id: Optional[str] = None
     entry_level_run_id: Optional[str] = None
     test_run_id: Optional[str] = None
+    comparison_data: Optional[Dict[str, Any]] = None
+    single_run_data: Optional[Dict[str, Any]] = None
+    recommendations: Optional[List[Dict[str, Any]]] = None
 
 class JobStore:
     def __init__(self):
@@ -97,7 +101,13 @@ class JobStore:
 
             # IMMUTABILITY GUARD: Prevent terminal states from being overwritten!
             # E.g. A CANCELLED or FAILED job must never be resurrected to COMPLETED by late worker completion
-            terminal_states = (JobState.COMPLETED.value, JobState.FAILED.value, JobState.CANCELLED.value)
+            terminal_states = (
+                JobState.COMPLETED.value,
+                JobState.COMPLETED_WITH_WARNINGS.value,
+                JobState.PARTIAL.value,
+                JobState.FAILED.value,
+                JobState.CANCELLED.value
+            )
             if record["status"] in terminal_states:
                 requested_status = kwargs.get("status")
                 if requested_status and requested_status != record["status"]:
@@ -176,7 +186,13 @@ class JobStore:
             if job_id not in self._jobs:
                 return False
             record = self._jobs[job_id]
-            terminal_states = (JobState.COMPLETED.value, JobState.FAILED.value, JobState.CANCELLED.value)
+            terminal_states = (
+                JobState.COMPLETED.value,
+                JobState.COMPLETED_WITH_WARNINGS.value,
+                JobState.PARTIAL.value,
+                JobState.FAILED.value,
+                JobState.CANCELLED.value
+            )
             if record["status"] in terminal_states:
                 return False
 

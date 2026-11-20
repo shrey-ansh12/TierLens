@@ -47,6 +47,8 @@ async def _execute_single_tier(
         started_at=datetime.now(timezone.utc),
         is_synthetic=False
     )
+    if profile:
+        test_run.device_profile = profile
     db.add(test_run)
     await db.commit()
     await db.refresh(test_run)
@@ -204,8 +206,10 @@ async def orchestrate_web_test_job(
 
         async def _run_workload():
             async with AsyncSessionLocal() as session:
+                from app.api.v1.comparisons import build_comparison_payload, serialize_test_run
+
                 if mode == "DUAL_COMPARISON":
-                    comparison_group_id = str(uuid.uuid4())
+                    comparison_group_id = job_id
                     await job_store.update_job(
                         job_id,
                         status=JobState.RUNNING.value,
@@ -214,65 +218,99 @@ async def orchestrate_web_test_job(
                         comparison_group_id=comparison_group_id
                     )
 
-                    run_gb, res_gb = await _execute_single_tier(
-                        target_url=target_url,
-                        tier_key="GOOD_BUDGET",
-                        project_id=project_id,
-                        comparison_group_id=comparison_group_id,
-                        workspace_name=workspace_name,
-                        project_name=project_name,
-                        db=session
-                    )
+                    run_gb, res_gb = None, None
+                    gb_error = None
+                    try:
+                        run_gb, res_gb = await _execute_single_tier(
+                            target_url=target_url,
+                            tier_key="GOOD_BUDGET",
+                            project_id=project_id,
+                            comparison_group_id=comparison_group_id,
+                            workspace_name=workspace_name,
+                            project_name=project_name,
+                            db=session
+                        )
+                    except Exception as e:
+                        gb_error = str(e)
+                        logger.exception(f"Good Budget tier failed for job {job_id}: {e}")
 
                     await job_store.update_job(
                         job_id,
                         stage="Executing Entry-Level Test",
-                        progress_message="Simulating 3G network & 6x CPU throttle (Entry-Level profile)...",
-                        good_budget_run_id=run_gb.id
+                        progress_message="Simulating 3G network & 8x CPU throttle (Entry-Level profile)...",
+                        good_budget_run_id=run_gb.id if run_gb else None
                     )
 
-                    run_el, res_el = await _execute_single_tier(
-                        target_url=target_url,
-                        tier_key="ENTRY_LEVEL",
-                        project_id=project_id,
-                        comparison_group_id=comparison_group_id,
-                        workspace_name=workspace_name,
-                        project_name=project_name,
-                        db=session
-                    )
+                    run_el, res_el = None, None
+                    el_error = None
+                    try:
+                        run_el, res_el = await _execute_single_tier(
+                            target_url=target_url,
+                            tier_key="ENTRY_LEVEL",
+                            project_id=project_id,
+                            comparison_group_id=comparison_group_id,
+                            workspace_name=workspace_name,
+                            project_name=project_name,
+                            db=session
+                        )
+                    except Exception as e:
+                        el_error = str(e)
+                        logger.exception(f"Entry-Level tier failed for job {job_id}: {e}")
 
                     await job_store.update_job(
                         job_id,
                         status=JobState.ANALYZING.value,
                         stage="Analyzing Discrepancies",
                         progress_message="Correlating differential performance drop & generating RCA...",
-                        entry_level_run_id=run_el.id
+                        entry_level_run_id=run_el.id if run_el else None
                     )
 
-                    # Complete Dual Comparison
+                    # Build comparison payload
+                    comp_payload = await build_comparison_payload(comparison_group_id, session)
+
+                    # Evaluate final status based on both runs
                     duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
-                    has_warnings = (
-                        run_gb.status == TestStatus.COMPLETED_WITH_WARNINGS.value or
-                        run_el.status == TestStatus.COMPLETED_WITH_WARNINGS.value
-                    )
-                    has_failed = (
-                        run_gb.status == TestStatus.FAILED.value or
-                        run_el.status == TestStatus.FAILED.value
-                    )
-                    final_status = (
-                        JobState.FAILED.value if has_failed else (
-                            JobState.COMPLETED_WITH_WARNINGS.value if has_warnings else JobState.COMPLETED.value
+                    both_succeeded = run_gb is not None and run_el is not None
+                    neither_succeeded = run_gb is None and run_el is None
+
+                    if neither_succeeded:
+                        final_status = JobState.FAILED.value
+                        progress_msg = f"Both device profiles failed to complete. Good Budget: {gb_error} | Entry-Level: {el_error}"
+                    elif not both_succeeded:
+                        final_status = JobState.PARTIAL.value
+                        if run_gb:
+                            progress_msg = f"Good Budget profile completed, but Entry-Level profile failed ({el_error})."
+                        else:
+                            progress_msg = f"Entry-Level profile completed, but Good Budget profile failed ({gb_error})."
+                    else:
+                        has_warnings = (
+                            run_gb.status == TestStatus.COMPLETED_WITH_WARNINGS.value or
+                            run_el.status == TestStatus.COMPLETED_WITH_WARNINGS.value
                         )
-                    )
-                    progress_msg = (
-                        "Dual device comparison completed with non-fatal warnings." if has_warnings else
-                        "Dual device comparison completed successfully."
-                    )
+                        has_failed = (
+                            run_gb.status == TestStatus.FAILED.value or
+                            run_el.status == TestStatus.FAILED.value
+                        )
+                        if has_failed:
+                            final_status = JobState.FAILED.value
+                            progress_msg = "Device test execution failed on target application."
+                        elif has_warnings:
+                            final_status = JobState.COMPLETED_WITH_WARNINGS.value
+                            progress_msg = "Dual device comparison completed with non-fatal warnings."
+                        else:
+                            final_status = JobState.COMPLETED.value
+                            progress_msg = "Dual device comparison completed successfully."
+
                     await job_store.update_job(
                         job_id,
                         status=final_status,
-                        stage="Completed",
+                        stage="Completed" if final_status != JobState.FAILED.value else "Execution Failed",
                         progress_message=progress_msg,
+                        comparison_group_id=comparison_group_id,
+                        good_budget_run_id=run_gb.id if run_gb else None,
+                        entry_level_run_id=run_el.id if run_el else None,
+                        comparison_data=comp_payload,
+                        recommendations=comp_payload.get("recommendations", []) if comp_payload else [],
                         completed_at=datetime.now(timezone.utc).isoformat(),
                         duration_ms=duration
                     )
@@ -303,12 +341,29 @@ async def orchestrate_web_test_job(
                         )
                     )
                     primary_fail = single_result.failures[0] if (single_result and single_result.failures) else None
+                    stmt_single = (
+                        select(TestRun)
+                        .where(TestRun.id == single_run.id)
+                        .options(
+                            selectinload(TestRun.metrics),
+                            selectinload(TestRun.failures),
+                            selectinload(TestRun.artifacts),
+                            selectinload(TestRun.recommendations),
+                            selectinload(TestRun.device_profile),
+                        )
+                    )
+                    single_res = await session.execute(stmt_single)
+                    fresh_single = single_res.scalars().first()
+                    serialized_single = serialize_test_run(fresh_single or single_run)
+
                     await job_store.update_job(
                         job_id,
                         status=single_status,
                         stage="Completed",
                         progress_message=f"Web test for {tier} finished ({single_run.failure_summary}).",
                         test_run_id=single_run.id,
+                        single_run_data=serialized_single,
+                        recommendations=serialized_single.get("recommendations", []) if serialized_single else [],
                         error_category=primary_fail["failure_type"] if (primary_fail and single_status == JobState.FAILED.value) else None,
                         error=single_run.failure_summary if single_status == JobState.FAILED.value else None,
                         completed_at=datetime.now(timezone.utc).isoformat(),
