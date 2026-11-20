@@ -146,3 +146,17 @@ async def test_database_table_initialization_all_entities():
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     await test_engine.dispose()
+
+
+def test_cors_origins_parsing():
+    """Verify CORS_ORIGINS parses wildcard, comma-separated, and list formats without SettingsError."""
+    import os
+    os.environ["CORS_ORIGINS"] = "*"
+    s1 = Settings()
+    assert s1.CORS_ORIGINS == ["*"]
+
+    os.environ["CORS_ORIGINS"] = "https://tierlens.vercel.app,http://localhost:3000"
+    s2 = Settings()
+    assert s2.CORS_ORIGINS == ["https://tierlens.vercel.app", "http://localhost:3000"]
+    del os.environ["CORS_ORIGINS"]
+

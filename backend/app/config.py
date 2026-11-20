@@ -1,5 +1,5 @@
 import os
-from typing import List, Optional
+from typing import List, Optional, Union, Any
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from app.core.db_url import normalize_database_url, mask_database_url
@@ -64,11 +64,11 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE_MB: int = 150
 
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000", "*"]
+    CORS_ORIGINS: Union[List[str], str] = ["http://localhost:3000", "http://127.0.0.1:3000", "*"]
 
-    @field_validator("CORS_ORIGINS", mode="before")
+    @field_validator("CORS_ORIGINS", mode="after")
     @classmethod
-    def validate_cors_origins(cls, v: object) -> List[str]:
+    def validate_cors_origins(cls, v: Any) -> List[str]:
         if isinstance(v, str):
             clean = v.strip()
             if clean.startswith("[") and clean.endswith("]"):
@@ -80,7 +80,7 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in clean.split(",") if origin.strip()]
         if isinstance(v, (list, tuple)):
             return list(v)
-        return ["http://localhost:3000", "http://127.0.0.1:3000", "*"]
+        return ["*"]
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
