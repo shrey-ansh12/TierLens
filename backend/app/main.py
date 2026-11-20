@@ -29,8 +29,45 @@ logger = logging.getLogger("tierlens")
 async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting TierLens Platform...")
+
+    # In production, validate PostgreSQL database connectivity before proceeding
+    if settings.ENVIRONMENT == "production" or settings.DATABASE_MODE == "postgres_required":
+        logger.info(f"Validating production PostgreSQL connectivity against: {settings.get_masked_database_url()}")
+        try:
+            from sqlalchemy import text
+            from app.core.database import AsyncSessionLocal
+            async with AsyncSessionLocal() as session:
+                await session.execute(text("SELECT 1"))
+            logger.info("Production PostgreSQL connectivity verified successfully.")
+        except Exception as e:
+            logger.error(f"Production database connectivity check failed: {e}")
+            raise RuntimeError(
+                f"Production database connection error: Unable to connect to PostgreSQL at "
+                f"{settings.get_masked_database_url()}. Ensure DATABASE_URL is correct and the database is accessible."
+            ) from e
+
     await init_db()
     logger.info("Database schema initialized.")
+
+    # Reconcile any orphaned RUNNING test runs left by prior unexpected server shutdowns
+    try:
+        from app.models.relational.entities import TestRun, TestStatus
+        from app.core.database import AsyncSessionLocal
+        from sqlalchemy import update
+        async with AsyncSessionLocal() as session:
+            stmt = (
+                update(TestRun)
+                .where(TestRun.status == TestStatus.RUNNING.value)
+                .values(
+                    status=TestStatus.FAILED.value,
+                    failure_summary="Test interrupted by backend restart."
+                )
+            )
+            await session.execute(stmt)
+            await session.commit()
+    except Exception as e:
+        logger.warning(f"Startup zombie run reconciliation noticed: {e}")
+
     yield
     # Shutdown
     logger.info("Shutting down TierLens Platform...")

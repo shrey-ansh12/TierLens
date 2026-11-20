@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import create_engine, text, event
 from app.config import settings
+from app.core.db_url import mask_database_url, normalize_database_url
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ def get_engine():
     
     # 1. Explicit SQLite only mode
     if settings.DATABASE_MODE == "sqlite_only":
-        logger.info(f"Using explicitly configured SQLite database: {settings.SQLITE_DATABASE_URL}")
+        logger.info(f"Using explicitly configured SQLite database: {mask_database_url(settings.SQLITE_DATABASE_URL)}")
         _active_async_url = settings.SQLITE_DATABASE_URL
         _active_sync_url = settings.SQLITE_SYNC_DATABASE_URL
         _using_fallback = True
@@ -42,12 +43,19 @@ def get_engine():
 
     # 2. Strict PostgreSQL mode (Production)
     if settings.DATABASE_MODE == "postgres_required" or settings.ENVIRONMENT == "production":
-        logger.info(f"Strict PostgreSQL mode enforced. Connecting to: {_active_async_url}")
+        masked_url = mask_database_url(_active_async_url)
+        logger.info(f"Strict PostgreSQL mode enforced. Connecting to: {masked_url}")
+        if not _active_async_url or "sqlite" in _active_async_url.lower():
+            raise RuntimeError("Production database must be configured with a valid PostgreSQL URL.")
         return create_async_engine(
             _active_async_url,
             echo=False,
             future=True,
-            pool_pre_ping=True
+            pool_size=5,
+            max_overflow=5,
+            pool_recycle=300,
+            pool_pre_ping=True,
+            pool_timeout=30.0
         )
 
     # 3. Auto mode (Development fallback)
@@ -56,12 +64,16 @@ def get_engine():
             _active_async_url,
             echo=False,
             future=True,
-            pool_pre_ping=True
+            pool_size=5,
+            max_overflow=5,
+            pool_recycle=300,
+            pool_pre_ping=True,
+            pool_timeout=30.0
         )
         return engine
     except Exception as e:
         if settings.SQLITE_FALLBACK_ENABLED:
-            logger.warning(f"Failed to initialize async PostgreSQL engine ({e}). Falling back to SQLite: {settings.SQLITE_DATABASE_URL}")
+            logger.warning(f"Failed to initialize async PostgreSQL engine ({e}). Falling back to SQLite: {mask_database_url(settings.SQLITE_DATABASE_URL)}")
             _active_async_url = settings.SQLITE_DATABASE_URL
             _active_sync_url = settings.SQLITE_SYNC_DATABASE_URL
             _using_fallback = True
@@ -160,7 +172,14 @@ async def check_db_health() -> dict:
 async def init_db():
     """Initializes tables on startup if using SQLite or fresh db."""
     try:
+        # Explicitly register all relational entities on Base.metadata
+        import app.models.relational  # noqa: F401
+
         async with async_engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+        logger.info(f"Database schema initialized. Registered tables: {sorted(list(Base.metadata.tables.keys()))}")
     except Exception as e:
+        logger.error(f"Database table initialization failed: {e}")
+        if settings.ENVIRONMENT == "production" or settings.DATABASE_MODE == "postgres_required":
+            raise RuntimeError(f"Production database schema initialization failed: {e}") from e
         logger.warning(f"Auto init_db noticed: {e}")

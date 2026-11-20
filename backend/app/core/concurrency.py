@@ -25,6 +25,21 @@ class ConcurrencyManager:
     async def get_active_browser_count(self) -> int:
         return self._max_browsers - self._semaphore._value
 
+    async def try_reserve_workspace_slot(self, workspace_id: str, job_id: str, target_url: str) -> bool:
+        """
+        Atomically checks workspace active job quota and reserves slot.
+        Prevents TOCTOU race conditions under simultaneous requests.
+        """
+        async with self._lock:
+            active = self._workspace_active_jobs.get(workspace_id, set())
+            if len(active) >= settings.WORKSPACE_MAX_ACTIVE_JOBS:
+                return False
+            if workspace_id not in self._workspace_active_jobs:
+                self._workspace_active_jobs[workspace_id] = set()
+            self._workspace_active_jobs[workspace_id].add(job_id)
+            self._active_target_urls[target_url] = job_id
+            return True
+
     async def check_workspace_quota(self, workspace_id: str) -> bool:
         """Returns True if the workspace can submit a new job."""
         async with self._lock:

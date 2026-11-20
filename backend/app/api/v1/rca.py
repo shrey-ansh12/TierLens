@@ -4,7 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.models.relational.entities import Recommendation, RecommendationStatus
+from app.api.v1.auth import get_current_user, get_user_workspace
+from app.models.relational.entities import Recommendation, RecommendationStatus, User, TestRun, Project
 from app.schemas.tests import RecommendationResponse
 
 router = APIRouter(prefix="/rca", tags=["Root Cause Analysis & Developer Workflow"])
@@ -12,8 +13,19 @@ router = APIRouter(prefix="/rca", tags=["Root Cause Analysis & Developer Workflo
 @router.get("/run/{run_id}", response_model=List[RecommendationResponse])
 async def get_run_recommendations(
     run_id: str,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
+    ws = await get_user_workspace(current_user, db)
+    # Check that run belongs to project in workspace
+    r_res = await db.execute(select(TestRun).where(TestRun.id == run_id))
+    run = r_res.scalars().first()
+    if run:
+        p_res = await db.execute(select(Project).where(Project.id == run.project_id))
+        proj = p_res.scalars().first()
+        if proj and proj.workspace_id != ws.id:
+            raise HTTPException(status_code=403, detail="Access denied: Run does not belong to your workspace.")
+
     stmt = select(Recommendation).where(Recommendation.test_run_id == run_id)
     res = await db.execute(stmt)
     recs = res.scalars().all()
@@ -23,6 +35,7 @@ async def get_run_recommendations(
 async def update_recommendation_status(
     rec_id: str,
     new_status: str = Body(..., embed=True),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     stmt = select(Recommendation).where(Recommendation.id == rec_id)
@@ -47,6 +60,7 @@ async def update_recommendation_status(
 async def verify_recommendation_fix(
     rec_id: str,
     verification_run_id: str = Body(..., embed=True),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """

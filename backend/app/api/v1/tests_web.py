@@ -9,16 +9,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db, AsyncSessionLocal
-from app.api.v1.auth import get_current_user
+from app.api.v1.auth import get_current_user, get_user_workspace
 from app.models.relational.entities import (
     User, Workspace, Project, DeviceProfile, TestRun, TestMetric,
     TestFailure, TestArtifact, Recommendation, TestStatus
 )
 from app.schemas.tests import WebTestSubmitRequest, TestRunResponse, DualComparisonResponse
-from app.core.redis_client import redis_client
 from app.core.concurrency import concurrency_manager
 from app.workers.job_store import job_store, JobState, JobStatusResponse
-from app.workers.tasks import orchestrate_web_test_job, run_web_test_task
+from app.workers.tasks import orchestrate_web_test_job
 
 logger = logging.getLogger(__name__)
 
@@ -28,33 +27,37 @@ router = APIRouter(prefix="/tests/web", tags=["Website Performance Testing"])
 @router.post("/run", status_code=status.HTTP_202_ACCEPTED)
 async def queue_web_test(
     payload: WebTestSubmitRequest,
-    background_tasks: BackgroundTasks,
     response: Response,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Submits a website performance test for asynchronous background execution.
+    Submits a website performance test for in-process asynchronous execution.
     Returns HTTP 202 Accepted immediately with a unique job_id and status polling URL.
     """
-    # 1. Resolve workspace
-    ws_res = await db.execute(select(Workspace).where(Workspace.owner_id == current_user.id))
-    ws = ws_res.scalars().first()
-    workspace_id = ws.id if ws else str(uuid.uuid4())
-    workspace_name = ws.name if ws else "Workspace"
+    # 1. Resolve workspace strictly from authenticated user (never trusted from frontend)
+    ws = await get_user_workspace(current_user, db)
+    workspace_id = ws.id
+    workspace_name = ws.name
 
-    # 2. Check workspace concurrency quota
-    can_proceed = await concurrency_manager.check_workspace_quota(workspace_id)
-    if not can_proceed:
+    # 2. Generate unique job ID upfront
+    job_id = f"job_web_{uuid.uuid4().hex[:12]}"
+
+    # 3. Atomically check quota and reserve slot (prevents TOCTOU race conditions)
+    reserved = await concurrency_manager.try_reserve_workspace_slot(workspace_id, job_id, payload.target_url)
+    if not reserved:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Workspace active job quota reached. Please wait for in-progress tests to complete."
+            detail="Workspace active job quota reached (maximum 4 concurrent jobs). Please wait for active tests to complete.",
+            headers={"Retry-After": "15"}
         )
 
-    # 3. Resolve or create project
+    # 4. Resolve or create project within the user's workspace
     project = None
     if payload.project_id:
-        p_res = await db.execute(select(Project).where(Project.id == payload.project_id))
+        p_res = await db.execute(
+            select(Project).where(Project.id == payload.project_id, Project.workspace_id == workspace_id)
+        )
         project = p_res.scalars().first()
 
     if not project:
@@ -74,10 +77,8 @@ async def queue_web_test(
     project_name = project.name
     mode = "DUAL_COMPARISON" if payload.tier == "BOTH" else "SINGLE_RUN"
 
-    # 4. Generate unique job ID and register in job store
-    job_id = f"job_web_{uuid.uuid4().hex[:12]}"
-    await concurrency_manager.register_job(job_id, workspace_id, payload.target_url)
-    job_rec = await job_store.create_job(
+    # 5. Register in job store
+    await job_store.create_job(
         job_id=job_id,
         target_url=payload.target_url,
         tier=payload.tier,
@@ -86,50 +87,20 @@ async def queue_web_test(
         project_id=project_id
     )
 
-    # 5. Dispatch to Celery if Redis is connected, otherwise fallback to async event loop task
-    redis_health = await redis_client.check_health()
-    dispatched_via = "in_process_worker"
-    if redis_health.get("connected"):
-        try:
-            run_web_test_task.delay(
-                job_id=job_id,
-                target_url=payload.target_url,
-                tier=payload.tier,
-                mode=mode,
-                project_id=project_id,
-                workspace_id=workspace_id,
-                workspace_name=workspace_name,
-                project_name=project_name
-            )
-            dispatched_via = "celery_redis_queue"
-        except Exception as e:
-            logger.warning(f"Celery dispatch failed ({e}). Falling back to async event loop task.")
-            asyncio.create_task(
-                orchestrate_web_test_job(
-                    job_id=job_id,
-                    target_url=payload.target_url,
-                    tier=payload.tier,
-                    mode=mode,
-                    project_id=project_id,
-                    workspace_id=workspace_id,
-                    workspace_name=workspace_name,
-                    project_name=project_name
-                )
-            )
-    else:
-        # Resilient background dispatch via non-blocking asyncio task
-        asyncio.create_task(
-            orchestrate_web_test_job(
-                job_id=job_id,
-                target_url=payload.target_url,
-                tier=payload.tier,
-                mode=mode,
-                project_id=project_id,
-                workspace_id=workspace_id,
-                workspace_name=workspace_name,
-                project_name=project_name
-            )
+    # 6. Dispatch via in-process asyncio task with task handle registration for clean preemption
+    task = asyncio.create_task(
+        orchestrate_web_test_job(
+            job_id=job_id,
+            target_url=payload.target_url,
+            tier=payload.tier,
+            mode=mode,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            workspace_name=workspace_name,
+            project_name=project_name
         )
+    )
+    job_store.register_active_task(job_id, task)
 
     response.status_code = status.HTTP_202_ACCEPTED
     return {
@@ -139,7 +110,7 @@ async def queue_web_test(
         "target_url": payload.target_url,
         "tier": payload.tier,
         "mode": mode,
-        "dispatched_via": dispatched_via,
+        "workspace_id": workspace_id,
         "poll_url": f"/api/v1/tests/web/jobs/{job_id}",
         "message": "Web performance test accepted and queued for background execution."
     }
@@ -148,16 +119,26 @@ async def queue_web_test(
 @router.get("/jobs/{job_id}", response_model=JobStatusResponse)
 async def get_web_job_status(
     job_id: str,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
     """
-    Returns the real-time execution status, stage, and output references for a background test job.
+    Returns real-time execution status for a test job.
+    Strictly verifies workspace ownership to prevent cross-workspace data leakage.
     """
     record = await job_store.get_job(job_id)
     if not record:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Job '{job_id}' not found."
+        )
+
+    # Multi-tenant security check
+    ws = await get_user_workspace(current_user, db)
+    if record.get("workspace_id") and record["workspace_id"] != ws.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: You do not have permission to view this job."
         )
 
     return JobStatusResponse(
@@ -168,6 +149,7 @@ async def get_web_job_status(
         target_url=record["target_url"],
         tier=record["tier"],
         mode=record["mode"],
+        workspace_id=record.get("workspace_id"),
         created_at=record["created_at"],
         started_at=record.get("started_at"),
         completed_at=record.get("completed_at"),
@@ -183,11 +165,28 @@ async def get_web_job_status(
 @router.post("/jobs/{job_id}/cancel")
 async def cancel_web_job(
     job_id: str,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
     """
-    Cancels a queued or currently executing background test job.
+    Cancels an active or queued background test job.
+    Pre-emptively aborts running Playwright processes and verifies workspace ownership.
     """
+    record = await job_store.get_job(job_id)
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job '{job_id}' not found."
+        )
+
+    # Multi-tenant authorization check
+    ws = await get_user_workspace(current_user, db)
+    if record.get("workspace_id") and record["workspace_id"] != ws.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: You cannot cancel jobs belonging to another workspace."
+        )
+
     cancelled = await job_store.cancel_job(job_id)
     if not cancelled:
         raise HTTPException(

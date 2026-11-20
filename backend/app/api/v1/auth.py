@@ -16,14 +16,9 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db)
 ) -> User:
     if not token:
-        # Default mock user for zero-friction demo / testing if token omitted
-        result = await db.execute(select(User).limit(1))
-        user = result.scalars().first()
-        if user:
-            return user
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required."
+            detail="Authentication required. Please provide a valid Bearer token."
         )
 
     payload = decode_access_token(token)
@@ -42,6 +37,22 @@ async def get_current_user(
             detail="User not found."
         )
     return user
+
+
+async def get_user_workspace(user: User, db: AsyncSession) -> Workspace:
+    """Helper to resolve or create the authenticated user's workspace."""
+    stmt = select(Workspace).where(Workspace.owner_id == user.id)
+    res = await db.execute(stmt)
+    ws = res.scalars().first()
+    if not ws:
+        ws = Workspace(
+            name=f"{user.full_name or 'My'}'s Workspace",
+            owner_id=user.id
+        )
+        db.add(ws)
+        await db.commit()
+        await db.refresh(ws)
+    return ws
 
 @router.post("/register", response_model=Token)
 async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):

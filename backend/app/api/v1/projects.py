@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.core.database import get_db
-from app.api.v1.auth import get_current_user
+from app.api.v1.auth import get_current_user, get_user_workspace
 from app.models.relational.entities import User, Workspace, Project, ApplicationVersion
 from app.schemas.projects import ProjectCreate, ProjectResponse, ApplicationVersionCreate, ApplicationVersionResponse
 
@@ -74,6 +74,10 @@ async def get_project(
     project = res.scalars().first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found.")
+    
+    ws = await get_user_workspace(current_user, db)
+    if project.workspace_id != ws.id:
+        raise HTTPException(status_code=403, detail="Access denied: Project does not belong to your workspace.")
     return project
 
 @router.post("/{project_id}/versions", response_model=ApplicationVersionResponse)
@@ -88,6 +92,10 @@ async def create_project_version(
     project = res.scalars().first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found.")
+
+    ws = await get_user_workspace(current_user, db)
+    if project.workspace_id != ws.id:
+        raise HTTPException(status_code=403, detail="Access denied: Project does not belong to your workspace.")
 
     new_ver = ApplicationVersion(
         project_id=project.id,

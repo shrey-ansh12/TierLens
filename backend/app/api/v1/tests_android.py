@@ -39,9 +39,10 @@ async def upload_apk(
     if not file.filename or not file.filename.endswith(".apk"):
         raise HTTPException(status_code=400, detail="Uploaded file must have an .apk extension.")
 
+    safe_filename = os.path.basename(file.filename)
     upload_id = str(uuid.uuid4())
-    save_filename = f"{upload_id}_{file.filename}"
-    save_path = os.path.join(settings.ARTIFACTS_DIR, save_filename)
+    stored_filename = f"{upload_id}_{safe_filename}"
+    save_path = os.path.join(settings.ARTIFACTS_DIR, stored_filename)
 
     with open(save_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
@@ -91,6 +92,12 @@ async def run_android_test(
     Executes an APK performance test.
     Per strict Real Data Policy, if ADB or emulator is unavailable, returns explicit SETUP_REQUIRED.
     """
+    # Safety check: ensure apk_path resides inside artifacts directory
+    abs_artifacts = os.path.abspath(settings.ARTIFACTS_DIR)
+    abs_apk = os.path.abspath(apk_path)
+    if not abs_apk.startswith(abs_artifacts) or not os.path.exists(abs_apk):
+        raise HTTPException(status_code=400, detail="Security Violation: Invalid or non-existent APK artifact path.")
+
     adb_info = adb_client.get_adb_info()
     if not adb_info["available"]:
         return {

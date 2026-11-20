@@ -287,6 +287,17 @@ async def orchestrate_web_test_job(
         # Run with overall timeout
         await asyncio.wait_for(_run_workload(), timeout=timeout_secs)
 
+    except asyncio.CancelledError:
+        logger.info(f"Job {job_id} task was cancelled in-flight.")
+        duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
+        await job_store.update_job(
+            job_id,
+            status=JobState.CANCELLED.value,
+            stage="Cancelled",
+            progress_message="Test execution was cancelled by user.",
+            completed_at=datetime.now(timezone.utc).isoformat(),
+            duration_ms=duration
+        )
     except asyncio.TimeoutError:
         logger.error(f"Job {job_id} exceeded maximum timeout of {settings.WEB_TEST_TIMEOUT_SECONDS}s.")
         duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
@@ -312,6 +323,7 @@ async def orchestrate_web_test_job(
             duration_ms=duration
         )
     finally:
+        job_store.unregister_active_task(job_id)
         if slot_acquired:
             concurrency_manager.release_slot()
         await concurrency_manager.unregister_job(job_id, workspace_id, target_url)

@@ -5,7 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
-from app.models.relational.entities import TestRun, DeviceProfile
+from app.api.v1.auth import get_current_user, get_user_workspace
+from app.models.relational.entities import User, Workspace, Project, TestRun, DeviceProfile
 from app.schemas.tests import DualComparisonResponse, TestRunResponse
 
 router = APIRouter(prefix="/comparisons", tags=["Device Comparison & Degradation"])
@@ -13,6 +14,7 @@ router = APIRouter(prefix="/comparisons", tags=["Device Comparison & Degradation
 @router.get("/{comparison_group_id}", response_model=DualComparisonResponse)
 async def get_comparison_results(
     comparison_group_id: str,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     stmt = (
@@ -31,6 +33,17 @@ async def get_comparison_results(
 
     if not runs:
         raise HTTPException(status_code=404, detail="Comparison group not found.")
+
+    # Workspace authorization check
+    ws = await get_user_workspace(current_user, db)
+    first_run = runs[0]
+    p_res = await db.execute(select(Project).where(Project.id == first_run.project_id))
+    proj = p_res.scalars().first()
+    if proj and proj.workspace_id != ws.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied: This comparison does not belong to your workspace."
+        )
 
     gb_run = next((r for r in runs if r.device_profile and r.device_profile.tier == "GOOD_BUDGET"), None)
     el_run = next((r for r in runs if r.device_profile and r.device_profile.tier == "ENTRY_LEVEL"), None)

@@ -87,6 +87,25 @@ export default function TierLensApp() {
   // Recommendations state
   const [recommendations, setRecommendations] = useState<any[]>([]);
 
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  const ensureAuth = async () => {
+    try {
+      const token = ApiClient.getToken();
+      if (!token) {
+        try {
+          const res = await ApiClient.login({ email: "demo@tierlens.com", password: "Password123!" });
+          ApiClient.setToken(res.access_token);
+        } catch {
+          const reg = await ApiClient.register({ email: "demo@tierlens.com", password: "Password123!", full_name: "Demo Developer" });
+          ApiClient.setToken(reg.access_token);
+        }
+      }
+    } catch (e) {
+      console.warn("Auto demo session initialization notice:", e);
+    }
+  };
+
   const refreshHealth = async () => {
     try {
       const health = await ApiClient.getHealth();
@@ -117,16 +136,20 @@ export default function TierLensApp() {
   };
 
   useEffect(() => {
-    refreshHealth();
+    ensureAuth().finally(() => {
+      refreshHealth();
+    });
   }, []);
 
   const handleCancelJob = async () => {
-    if (!activeJob) return;
+    if (!activeJob || isCancelling) return;
+    setIsCancelling(true);
     try {
       await ApiClient.cancelWebJob(activeJob.job_id);
       setTestStep("Cancellation requested...");
     } catch (err: any) {
       setErrorBanner(err.message || "Failed to cancel job.");
+      setIsCancelling(false);
     }
   };
 
@@ -217,6 +240,7 @@ export default function TierLensApp() {
       setErrorBanner(err.message || "Failed to execute test.");
     } finally {
       setIsRunningTest(false);
+      setIsCancelling(false);
       setTestStep(null);
       setActiveJob(null);
     }
@@ -433,9 +457,10 @@ export default function TierLensApp() {
                 {activeJob && (
                   <button
                     onClick={handleCancelJob}
-                    className="ml-2 text-[10px] font-bold uppercase tracking-wider text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-0.5 rounded transition"
+                    disabled={isCancelling}
+                    className="ml-2 text-[10px] font-bold uppercase tracking-wider text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 disabled:opacity-50 border border-red-200 px-2 py-0.5 rounded transition"
                   >
-                    Cancel
+                    {isCancelling ? "Cancelling..." : "Cancel"}
                   </button>
                 )}
               </div>
@@ -687,9 +712,10 @@ export default function TierLensApp() {
                         </span>
                         <button
                           onClick={handleCancelJob}
-                          className="text-[10px] text-red-600 hover:text-red-800 font-semibold underline ml-1"
+                          disabled={isCancelling}
+                          className="text-[10px] text-red-600 hover:text-red-800 disabled:opacity-50 font-semibold underline ml-1"
                         >
-                          Cancel Job
+                          {isCancelling ? "Cancelling..." : "Cancel Job"}
                         </button>
                       </div>
                     </div>
