@@ -335,6 +335,17 @@ export default function TierLensApp() {
   const [testSelectionMode, setTestSelectionMode] = useState<"preset" | "multi_select">("preset");
   const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
 
+  // Custom Hardware Live Tuning State
+  const [customDeviceName, setCustomDeviceName] = useState("Custom Hardware Benchmark");
+  const [customRamMb, setCustomRamMb] = useState(2048);
+  const [customCpuThrottle, setCustomCpuThrottle] = useState(6.0);
+  const [customCpuCores, setCustomCpuCores] = useState(4);
+  const [customNetworkPreset, setCustomNetworkPreset] = useState("Slow 3G");
+  const [customNetworkLatency, setCustomNetworkLatency] = useState(200);
+  const [customNetworkDownKbps, setCustomNetworkDownKbps] = useState(500);
+  const [customNetworkUpKbps, setCustomNetworkUpKbps] = useState(250);
+  const [customViewport, setCustomViewport] = useState("mobile_budget");
+
   // Execution State
   const [isRunningTest, setIsRunningTest] = useState(false);
   const [testStep, setTestStep] = useState<string | null>(null);
@@ -627,6 +638,29 @@ export default function TierLensApp() {
           throw new Error("Please select at least one device profile configuration for testing.");
         }
         payload.device_profile_ids = selectedProfileIds;
+      } else if (selectedTier === "CUSTOM") {
+        const vp = customViewport === "mobile_budget" ? { width: 360, height: 800 } :
+                   customViewport === "mobile_standard" ? { width: 390, height: 844 } :
+                   customViewport === "tablet" ? { width: 768, height: 1024 } : { width: 1366, height: 768 };
+        payload.custom_profiles = [{
+          name: customDeviceName || "Custom Parameter Config",
+          tier: "CUSTOM",
+          device_type: "Custom Device",
+          ram_mb: Number(customRamMb),
+          cpu_cores: Number(customCpuCores),
+          cpu_throttle_rate: Number(customCpuThrottle),
+          network_profile: customNetworkPreset,
+          network_down_kbps: Number(customNetworkDownKbps),
+          network_up_kbps: Number(customNetworkUpKbps),
+          network_latency_ms: Number(customNetworkLatency),
+          viewport_width: vp.width,
+          viewport_height: vp.height,
+          device_scale_factor: customViewport.startsWith("mobile") ? 2.0 : 1.0,
+          is_mobile: !customViewport.startsWith("desktop"),
+          has_touch: !customViewport.startsWith("desktop"),
+          storage_capacity_gb: 32,
+          storage_profile: "Custom Profile"
+        }];
       } else {
         payload.tier = selectedTier;
       }
@@ -1731,40 +1765,209 @@ export default function TierLensApp() {
                     </div>
 
                     {testSelectionMode === "preset" ? (
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div
-                          onClick={() => setSelectedTier("BOTH")}
-                          className={`p-3.5 rounded-lg border cursor-pointer transition ${
-                            selectedTier === "BOTH"
-                              ? "bg-blue-500/15 border-blue-500 text-white font-semibold"
-                              : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-600"
-                          }`}
-                        >
-                          <div className="text-xs text-slate-800">Dual Comparison (Both)</div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">Good Budget (4x CPU) vs Entry-Level (8x CPU)</div>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                          <div
+                            onClick={() => setSelectedTier("BOTH")}
+                            className={`p-3.5 rounded-xl border cursor-pointer transition shadow-sm ${
+                              selectedTier === "BOTH"
+                                ? "bg-blue-50 border-blue-500 text-blue-900 ring-2 ring-blue-500/20 font-semibold"
+                                : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                            }`}
+                          >
+                            <div className="text-xs font-bold text-slate-900">Dual Comparison (Both)</div>
+                            <div className="text-[10px] text-slate-500 mt-1">Good Budget (4x CPU) vs Entry-Level (8x CPU)</div>
+                          </div>
+                          <div
+                            onClick={() => setSelectedTier("GOOD_BUDGET")}
+                            className={`p-3.5 rounded-xl border cursor-pointer transition shadow-sm ${
+                              selectedTier === "GOOD_BUDGET"
+                                ? "bg-blue-50 border-blue-500 text-blue-900 ring-2 ring-blue-500/20 font-semibold"
+                                : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                            }`}
+                          >
+                            <div className="text-xs font-bold text-slate-900">Good Budget Only</div>
+                            <div className="text-[10px] text-slate-500 mt-1">4x CPU Throttling, Fast 3G network</div>
+                          </div>
+                          <div
+                            onClick={() => setSelectedTier("ENTRY_LEVEL")}
+                            className={`p-3.5 rounded-xl border cursor-pointer transition shadow-sm ${
+                              selectedTier === "ENTRY_LEVEL"
+                                ? "bg-blue-50 border-blue-500 text-blue-900 ring-2 ring-blue-500/20 font-semibold"
+                                : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                            }`}
+                          >
+                            <div className="text-xs font-bold text-slate-900">Entry-Level Only</div>
+                            <div className="text-[10px] text-slate-500 mt-1">8x CPU Throttling, Slow 3G network</div>
+                          </div>
+                          <div
+                            onClick={() => setSelectedTier("CUSTOM")}
+                            className={`p-3.5 rounded-xl border cursor-pointer transition shadow-sm ${
+                              selectedTier === "CUSTOM"
+                                ? "bg-indigo-50 border-indigo-500 text-indigo-900 ring-2 ring-indigo-500/20 font-semibold"
+                                : "bg-white border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50/30"
+                            }`}
+                          >
+                            <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                              <Sliders className="w-3.5 h-3.5 text-indigo-600" />
+                              Custom Parameters
+                            </div>
+                            <div className="text-[10px] text-slate-500 mt-1">Manual RAM, CPU Throttling, Network & Screen</div>
+                          </div>
                         </div>
-                        <div
-                          onClick={() => setSelectedTier("GOOD_BUDGET")}
-                          className={`p-3.5 rounded-lg border cursor-pointer transition ${
-                            selectedTier === "GOOD_BUDGET"
-                              ? "bg-blue-500/15 border-blue-500 text-white font-semibold"
-                              : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-600"
-                          }`}
-                        >
-                          <div className="text-xs text-slate-800">Good Budget Only</div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">4x CPU Throttling, Fast 3G network</div>
-                        </div>
-                        <div
-                          onClick={() => setSelectedTier("ENTRY_LEVEL")}
-                          className={`p-3.5 rounded-lg border cursor-pointer transition ${
-                            selectedTier === "ENTRY_LEVEL"
-                              ? "bg-blue-500/15 border-blue-500 text-white font-semibold"
-                              : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-600"
-                          }`}
-                        >
-                          <div className="text-xs text-slate-800">Entry-Level Only</div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">8x CPU Throttling, Slow 3G network</div>
-                        </div>
+
+                        {/* Interactive Custom Device Live Tuning Panel */}
+                        {selectedTier === "CUSTOM" && (
+                          <div className="p-5 rounded-xl bg-white border border-indigo-200 shadow-sm space-y-4 animate-in fade-in duration-200">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                              <div className="flex items-center gap-2">
+                                <Sliders className="w-4 h-4 text-indigo-600" />
+                                <h4 className="text-xs font-bold text-slate-900">Manual Device Hardware & Network Configuration</h4>
+                              </div>
+                              <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-0.5 rounded-full font-mono font-semibold">
+                                Live CDP Emulation Active
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* Device Name */}
+                              <div>
+                                <label className="block text-[11px] font-semibold text-slate-700 mb-1">Configuration Name / Benchmark Label</label>
+                                <input
+                                  type="text"
+                                  value={customDeviceName}
+                                  onChange={e => setCustomDeviceName(e.target.value)}
+                                  placeholder="e.g. Budget Phone (2GB RAM, 6x CPU)"
+                                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 shadow-sm focus:outline-none focus:border-indigo-500"
+                                />
+                              </div>
+
+                              {/* Screen / Viewport */}
+                              <div>
+                                <label className="block text-[11px] font-semibold text-slate-700 mb-1">Screen Size & Viewport Emulation</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                  {[
+                                    { id: "mobile_budget", label: "Budget (360x800)" },
+                                    { id: "mobile_standard", label: "Standard (390x844)" },
+                                    { id: "desktop", label: "Desktop (1366x768)" },
+                                  ].map(vp => (
+                                    <button
+                                      key={vp.id}
+                                      type="button"
+                                      onClick={() => setCustomViewport(vp.id)}
+                                      className={`px-2.5 py-2 rounded-lg text-[11px] font-medium border text-center transition ${
+                                        customViewport === vp.id
+                                          ? "bg-indigo-600 text-white border-indigo-600 font-semibold shadow-sm"
+                                          : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                                      }`}
+                                    >
+                                      {vp.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* RAM Selector */}
+                            <div>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <label className="text-[11px] font-semibold text-slate-700">RAM (Analytical Memory Spec)</label>
+                                <span className="text-xs font-mono font-bold text-indigo-600">
+                                  {customRamMb >= 1024 ? `${customRamMb / 1024} GB` : `${customRamMb} MB`}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {[1024, 2048, 3072, 4096, 6144, 8192, 12288].map(ram => (
+                                  <button
+                                    key={ram}
+                                    type="button"
+                                    onClick={() => setCustomRamMb(ram)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs border font-medium transition ${
+                                      customRamMb === ram
+                                        ? "bg-indigo-600 text-white border-indigo-600 font-semibold shadow-sm"
+                                        : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                                    }`}
+                                  >
+                                    {ram >= 1024 ? `${ram / 1024} GB` : `${ram} MB`}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* CPU Throttling Rate */}
+                            <div>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <label className="text-[11px] font-semibold text-slate-700">CPU Throttling Rate (Real CDP Core Slowdown)</label>
+                                <span className="text-xs font-mono font-bold text-indigo-600">
+                                  {customCpuThrottle}x Slowdown ({customCpuCores} Cores)
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                {[
+                                  { throttle: 1.0, cores: 8, label: "1x Unthrottled", desc: "Flagship / Fast PC" },
+                                  { throttle: 2.0, cores: 6, label: "2x Mid-Range", desc: "Mid-tier Phone" },
+                                  { throttle: 4.0, cores: 4, label: "4x Budget", desc: "$150 Budget Phone" },
+                                  { throttle: 6.0, cores: 4, label: "6x Low-End", desc: "Older / Constrained" },
+                                  { throttle: 8.0, cores: 2, label: "8x Entry-Level", desc: "Severe Throttle (<$80)" },
+                                ].map(cpu => (
+                                  <button
+                                    key={cpu.throttle}
+                                    type="button"
+                                    onClick={() => {
+                                      setCustomCpuThrottle(cpu.throttle);
+                                      setCustomCpuCores(cpu.cores);
+                                    }}
+                                    className={`p-2.5 rounded-lg text-left border transition ${
+                                      customCpuThrottle === cpu.throttle
+                                        ? "bg-indigo-50 border-indigo-500 text-indigo-900 ring-2 ring-indigo-500/20 font-semibold shadow-sm"
+                                        : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                                    }`}
+                                  >
+                                    <div className="text-xs font-bold">{cpu.label}</div>
+                                    <div className="text-[10px] text-slate-500 mt-0.5">{cpu.desc}</div>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Network Profile */}
+                            <div>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <label className="text-[11px] font-semibold text-slate-700">Network Condition (CDP Real Traffic Throttling)</label>
+                                <span className="text-xs font-mono font-bold text-emerald-600">
+                                  {customNetworkPreset}: {customNetworkLatency}ms ping, {customNetworkDownKbps >= 1000 ? `${customNetworkDownKbps/1000} Mbps` : `${customNetworkDownKbps} kbps`} down
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                {[
+                                  { name: "Slow 3G", down: 500, up: 250, lat: 200, desc: "200ms latency, 500 kbps" },
+                                  { name: "Fast 3G", down: 1600, up: 750, lat: 40, desc: "40ms latency, 1.6 Mbps" },
+                                  { name: "4G LTE", down: 9000, up: 3000, lat: 20, desc: "20ms latency, 9.0 Mbps" },
+                                  { name: "Wi-Fi", down: 30000, up: 12000, lat: 10, desc: "10ms latency, 30.0 Mbps" },
+                                ].map(net => (
+                                  <button
+                                    key={net.name}
+                                    type="button"
+                                    onClick={() => {
+                                      setCustomNetworkPreset(net.name);
+                                      setCustomNetworkDownKbps(net.down);
+                                      setCustomNetworkUpKbps(net.up);
+                                      setCustomNetworkLatency(net.lat);
+                                    }}
+                                    className={`p-2.5 rounded-lg text-left border transition ${
+                                      customNetworkPreset === net.name
+                                        ? "bg-emerald-50 border-emerald-500 text-emerald-900 ring-2 ring-emerald-500/20 font-semibold shadow-sm"
+                                        : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                                    }`}
+                                  >
+                                    <div className="text-xs font-bold">{net.name}</div>
+                                    <div className="text-[10px] text-slate-500 mt-0.5">{net.desc}</div>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
