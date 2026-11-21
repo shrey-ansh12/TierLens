@@ -204,7 +204,11 @@ async def get_web_job_status(
         test_run_id=test_run_id,
         comparison_data=comp_data,
         single_run_data=single_data,
-        recommendations=record.get("recommendations") or (comp_data.get("recommendations") if comp_data else None)
+        recommendations=record.get("recommendations") or (comp_data.get("recommendations") if comp_data else None),
+        stage_id=record.get("stage_id", 1),
+        stage_name=record.get("stage_name", record.get("stage")),
+        logs=record.get("logs", []),
+        current_metrics=record.get("current_metrics", {})
     )
 
 

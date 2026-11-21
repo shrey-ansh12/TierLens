@@ -1,3 +1,4 @@
+import os
 import asyncio
 import logging
 from datetime import datetime, timezone
@@ -420,6 +421,7 @@ async def orchestrate_web_test_job(
                         stage_id=7,
                         stage_name="Report Generation",
                         progress_message=f"Test run completed ({single_run.status.replace('_', ' ')}).",
+                        test_run_id=single_run.id,
                         single_run_id=single_run.id,
                         single_run_data=serialized_single,
                         metrics_summary={m.name: m.value for m in (fresh_run.metrics or [])},
