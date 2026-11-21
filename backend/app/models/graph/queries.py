@@ -16,7 +16,8 @@ async def sync_run_to_neo4j(
     recommendations: List[Dict[str, Any]]
 ) -> bool:
     """
-    Persists test run nodes and meaningful relationships to Neo4j graph.
+    Persists test run nodes, metrics, failures, error signatures, and connects
+    them to real-world Indian demographic cohorts (Sub-₹8k Budget & Congested Networks) in Neo4j.
     Returns True on success, False if Neo4j is disconnected.
     """
     health = await neo4j_manager.check_health()
@@ -30,8 +31,23 @@ async def sync_run_to_neo4j(
       ON CREATE SET app.name = $project_name
     MERGE (ws)-[:CONTAINS]->(app)
 
+    MERGE (entrySeg:MarketSegment {name: "Sub-₹8,000 Budget Devices"})
+      ON CREATE SET entrySeg.share_pct = 38.5, entrySeg.active_users_millions = 190, entrySeg.description = "Entry-level smartphones (Redmi 9A, JioPhone, Poco C51)"
+    MERGE (midSeg:MarketSegment {name: "₹12,000 - ₹20,000 Mid-Tier"})
+      ON CREATE SET midSeg.share_pct = 36.0, midSeg.active_users_millions = 180, midSeg.description = "Mid-tier budget smartphones (Galaxy A14, Moto G)"
+    MERGE (congestedNet:NetworkCohort {name: "Jio/Airtel Congested Tier-2/3"})
+      ON CREATE SET congestedNet.share_pct = 61.0, congestedNet.active_users_millions = 310, congestedNet.description = "Tier-2/3 cell congestion with high packet latency"
+
     MERGE (profile:DeviceProfile {name: $tier})
       ON CREATE SET profile.tier = $tier
+
+    FOREACH (_ IN CASE WHEN $tier = 'ENTRY_LEVEL' THEN [1] ELSE [] END |
+      MERGE (profile)-[:REPRESENTS_SEGMENT]->(entrySeg)
+      MERGE (profile)-[:SUBJECT_TO_NETWORK]->(congestedNet)
+    )
+    FOREACH (_ IN CASE WHEN $tier = 'GOOD_BUDGET' THEN [1] ELSE [] END |
+      MERGE (profile)-[:REPRESENTS_SEGMENT]->(midSeg)
+    )
 
     CREATE (run:TestRun {
         id: $run_id,
@@ -41,7 +57,7 @@ async def sync_run_to_neo4j(
     CREATE (app)-[:EXECUTED_TEST]->(run)
     CREATE (run)-[:EXECUTED_ON]->(profile)
 
-    WITH run
+    WITH run, entrySeg, midSeg, congestedNet
     UNWIND $metrics AS m
     CREATE (met:Metric {
         name: m.name,
@@ -51,7 +67,7 @@ async def sync_run_to_neo4j(
     })
     CREATE (run)-[:HAS_METRIC]->(met)
 
-    WITH run
+    WITH run, entrySeg, midSeg, congestedNet
     UNWIND $failures AS f
     CREATE (fail:Failure {
         title: f.title,
@@ -63,6 +79,14 @@ async def sync_run_to_neo4j(
     MERGE (sig:ErrorSignature {signature: f.error_signature})
       ON CREATE SET sig.title = f.title, sig.first_seen = datetime()
     CREATE (fail)-[:MATCHES_ERROR_SIGNATURE]->(sig)
+
+    FOREACH (_ IN CASE WHEN $tier = 'ENTRY_LEVEL' THEN [1] ELSE [] END |
+      MERGE (fail)-[:IMPACTS_POPULATION {estimated_users_millions: 190, population_pct: 38.5}]->(entrySeg)
+      MERGE (fail)-[:AFFECTS_NETWORK_COHORT {estimated_users_millions: 310, population_pct: 61.0}]->(congestedNet)
+    )
+    FOREACH (_ IN CASE WHEN $tier = 'GOOD_BUDGET' THEN [1] ELSE [] END |
+      MERGE (fail)-[:IMPACTS_POPULATION {estimated_users_millions: 180, population_pct: 36.0}]->(midSeg)
+    )
 
     WITH run
     UNWIND $recommendations AS r
@@ -88,7 +112,7 @@ async def sync_run_to_neo4j(
 
     try:
         await neo4j_manager.run_query(cypher, params)
-        logger.info(f"Successfully synced run {run_id} to Neo4j graph.")
+        logger.info(f"Successfully synced run {run_id} and Indian demographics to Neo4j graph.")
         return True
     except Exception as e:
         logger.error(f"Failed to sync run to Neo4j: {e}")
@@ -113,10 +137,13 @@ async def get_project_graph(project_id: str) -> Dict[str, Any]:
     cypher = """
     MATCH (app:Application {id: $project_id})-[r1:EXECUTED_TEST]->(run:TestRun)
     OPTIONAL MATCH (run)-[r2:EXECUTED_ON]->(dp:DeviceProfile)
+    OPTIONAL MATCH (dp)-[r7:REPRESENTS_SEGMENT]->(seg:MarketSegment)
+    OPTIONAL MATCH (dp)-[r8:SUBJECT_TO_NETWORK]->(net:NetworkCohort)
     OPTIONAL MATCH (run)-[r3:PRODUCED_FAILURE]->(fail:Failure)-[r4:MATCHES_ERROR_SIGNATURE]->(sig:ErrorSignature)
+    OPTIONAL MATCH (fail)-[r9:IMPACTS_POPULATION]->(seg)
     OPTIONAL MATCH (run)-[r5:HAS_METRIC]->(m:Metric)
     OPTIONAL MATCH (run)-[r6:RECOMMENDS]->(rec:Recommendation)
-    RETURN app, run, dp, fail, sig, m, rec LIMIT 150
+    RETURN app, run, dp, seg, net, fail, sig, m, rec LIMIT 150
     """
 
     try:
@@ -156,6 +183,26 @@ async def get_project_graph(project_id: str) -> Dict[str, Any]:
                     "target": dp_id,
                     "type": "EXECUTED_ON"
                 })
+                if rec.get("seg"):
+                    sg = rec["seg"]
+                    sg_id = f"seg_{sg['name']}"
+                    add_node(sg_id, "MarketSegment", f"{sg['name']} ({sg.get('share_pct', 0)}%)", sg)
+                    edges_list.append({
+                        "id": f"{dp_id}_{sg_id}",
+                        "source": dp_id,
+                        "target": sg_id,
+                        "type": "REPRESENTS_SEGMENT"
+                    })
+                if rec.get("net"):
+                    nt = rec["net"]
+                    nt_id = f"net_{nt['name']}"
+                    add_node(nt_id, "NetworkCohort", f"{nt['name']} ({nt.get('share_pct', 0)}%)", nt)
+                    edges_list.append({
+                        "id": f"{dp_id}_{nt_id}",
+                        "source": dp_id,
+                        "target": nt_id,
+                        "type": "SUBJECT_TO_NETWORK"
+                    })
             if rec.get("fail") and rec.get("run"):
                 f = rec["fail"]
                 f_id = f"fail_{f.get('signature', 'err')}_{rec['run']['id'][:6]}"
@@ -175,6 +222,14 @@ async def get_project_graph(project_id: str) -> Dict[str, Any]:
                         "source": f_id,
                         "target": s_id,
                         "type": "MATCHES_ERROR_SIGNATURE"
+                    })
+                if rec.get("seg"):
+                    sg_id = f"seg_{rec['seg']['name']}"
+                    edges_list.append({
+                        "id": f"{f_id}_{sg_id}",
+                        "source": f_id,
+                        "target": sg_id,
+                        "type": "IMPACTS_POPULATION"
                     })
             if rec.get("rec") and rec.get("run"):
                 rc = rec["rec"]

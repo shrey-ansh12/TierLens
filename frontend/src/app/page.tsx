@@ -832,6 +832,40 @@ export default function TierLensApp() {
                     {/* DUAL COMPARISON RESULTS */}
                     {comparisonData && (
                       <div className="space-y-6">
+                        {/* 0. The ₹8,000 Cheap Phone Test Verdict (T1.2) */}
+                        {comparisonData?.cheap_phone_verdict && (
+                          <div className={`p-5 rounded-xl border shadow-sm ${
+                            comparisonData.cheap_phone_verdict.status === "PASSED"
+                              ? "bg-emerald-50 border-emerald-200 text-emerald-950"
+                              : "bg-red-50 border-red-200 text-red-950"
+                          }`}>
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-2">
+                              <div className="flex items-center gap-2.5">
+                                <span className={`px-2.5 py-1 rounded text-xs font-black uppercase tracking-wider ${
+                                  comparisonData.cheap_phone_verdict.status === "PASSED"
+                                    ? "bg-emerald-600 text-white"
+                                    : "bg-red-600 text-white"
+                                }`}>
+                                  THE CHEAP PHONE TEST: {comparisonData.cheap_phone_verdict.status}
+                                </span>
+                                <span className="text-sm font-bold">{comparisonData.cheap_phone_verdict.headline}</span>
+                              </div>
+                              {comparisonData.cheap_phone_verdict.status === "FAILED" && (
+                                <span className="text-xs font-mono font-bold text-red-700 bg-red-100 border border-red-300 px-3 py-1 rounded">
+                                  🚨 ~{comparisonData.cheap_phone_verdict.total_indian_users_at_risk_millions}M Users At Risk ({comparisonData.cheap_phone_verdict.market_share_at_risk_pct}% of India)
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-700 mt-2 font-mono">
+                              <strong>Primary Bottleneck: </strong>{comparisonData.cheap_phone_verdict.bottleneck}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-3 mt-3 text-[11px] text-slate-600 border-t border-slate-200/60 pt-2 font-mono">
+                              <span><strong>Device:</strong> {comparisonData.cheap_phone_verdict.device_tier}</span>
+                              <span>•</span>
+                              <span><strong>Network:</strong> {comparisonData.cheap_phone_verdict.network_condition}</span>
+                            </div>
+                          </div>
+                        )}
                         {/* 1. Comparison Bar Chart Visualizer */}
                         <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm">
                           <div className="flex items-center justify-between mb-4">
@@ -1332,18 +1366,58 @@ export default function TierLensApp() {
           {activeTab === "failures" && (
             <div className="space-y-6">
               <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm">
-                <h2 className="text-base font-bold text-slate-900 mb-1">Failure Explorer & Error Signatures</h2>
-                <p className="text-xs text-slate-500 mb-6">
-                  Deduplicated runtime exceptions, JavaScript errors, and network HTTP failures captured during real browser sessions.
-                </p>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                      <AlertOctagon className="w-5 h-5 text-red-600" />
+                      Failure Explorer & Population Impact Ranking
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Failures and runtime exceptions ranked by how many Indian users they impact (T1.2).
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 rounded">
+                    Ranked by User Blast Radius
+                  </span>
+                </div>
 
-                {(!comparisonData?.entry_level_run?.failures || comparisonData.entry_level_run.failures.length === 0) ? (
+                {/* Cheap Phone Test Verdict Card */}
+                {comparisonData?.cheap_phone_verdict && (
+                  <div className={`p-4 rounded-xl border mb-6 ${
+                    comparisonData.cheap_phone_verdict.status === "PASSED"
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-950"
+                      : "bg-red-50 border-red-200 text-red-950"
+                  }`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                          comparisonData.cheap_phone_verdict.status === "PASSED"
+                            ? "bg-emerald-600 text-white"
+                            : "bg-red-600 text-white"
+                        }`}>
+                          CHEAP PHONE TEST: {comparisonData.cheap_phone_verdict.status}
+                        </span>
+                        <span className="text-xs font-bold">{comparisonData.cheap_phone_verdict.headline}</span>
+                      </div>
+                      {comparisonData.cheap_phone_verdict.status === "FAILED" && (
+                        <span className="text-[11px] font-mono font-bold text-red-700 bg-red-100 border border-red-300 px-2 py-0.5 rounded">
+                          ~{comparisonData.cheap_phone_verdict.total_indian_users_at_risk_millions}M Users At Risk ({comparisonData.cheap_phone_verdict.market_share_at_risk_pct}% of India)
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-700 mt-1 font-mono">
+                      <strong>Bottleneck: </strong>{comparisonData.cheap_phone_verdict.bottleneck}
+                    </p>
+                  </div>
+                )}
+
+                {(!(comparisonData?.ranked_failures?.length > 0) && (!comparisonData?.entry_level_run?.failures || comparisonData.entry_level_run.failures.length === 0)) ? (
                   <div className="p-8 text-center text-slate-400 text-xs bg-slate-50 rounded-xl border border-slate-200">
                     Zero fatal exceptions detected in active run session.
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {comparisonData.entry_level_run.failures.map((fail: any) => {
+                    {(comparisonData?.ranked_failures?.length > 0 ? comparisonData.ranked_failures : comparisonData.entry_level_run.failures).map((fail: any, fIdx: number) => {
                       const getCategoryBadge = (type: string) => {
                         switch (type) {
                           case "TARGET_APPLICATION_ERROR":
@@ -1369,15 +1443,30 @@ export default function TierLensApp() {
                       };
 
                       return (
-                        <div key={fail.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200 font-mono text-xs">
+                        <div key={fail.id || fIdx} className="p-4 rounded-xl bg-slate-50 border border-slate-200 font-mono text-xs">
                           <div className="flex items-center justify-between mb-2">
-                            <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold border ${getCategoryBadge(fail.failure_type)}`}>
-                              {fail.failure_type}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="bg-red-600 text-white font-black px-2 py-0.5 rounded text-[10px]">
+                                RANK #{fail.rank || (fIdx + 1)}
+                              </span>
+                              <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold border ${getCategoryBadge(fail.failure_type)}`}>
+                                {fail.failure_type}
+                              </span>
+                              {fail.users_hit_millions && (
+                                <span className="bg-amber-100 text-amber-900 border border-amber-300 font-bold px-2 py-0.5 rounded text-[10px]">
+                                  🚨 {fail.users_hit_millions}M Users Hit ({fail.population_pct}% of India)
+                                </span>
+                              )}
+                            </div>
                             <span className="text-[10px] text-slate-500">
                               Sig: {fail.error_signature}
                             </span>
                           </div>
+                          {fail.cohort_name && (
+                            <div className="text-[10px] text-slate-500 mb-1">
+                              Affected Cohort: <span className="font-semibold text-slate-700">{fail.cohort_name}</span>
+                            </div>
+                          )}
                           <h4 className="font-bold text-slate-900 text-sm mb-1">{fail.title}</h4>
                           <p className="text-slate-600 text-[11px] mb-2">{fail.message}</p>
                           {fail.url_or_file && (
@@ -1545,10 +1634,10 @@ export default function TierLensApp() {
                   {/* Entry-Level */}
                   <div className="p-5 rounded-xl bg-slate-50 border border-sky-200 space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-sm text-sky-700">Entry-Level Tier</span>
-                      <span className="text-[10px] font-mono bg-sky-100 text-sky-800 border border-sky-200 px-2 py-0.5 rounded font-semibold">~$70-$100 Bracket</span>
+                      <span className="font-bold text-sm text-sky-700">The ₹8,000 Cheap Phone Test Tier</span>
+                      <span className="text-[10px] font-mono bg-sky-100 text-sky-800 border border-sky-200 px-2 py-0.5 rounded font-semibold">~₹8,000 / $100 (38.5% of India)</span>
                     </div>
-                    <p className="text-xs text-slate-600">Representative of Redmi 9A / Nokia C-series.</p>
+                    <p className="text-xs text-slate-600">Representative of Redmi 9A / Poco C51 / JioPhone Next / Unisoc SC9863A.</p>
                     <div className="space-y-2 text-xs font-mono">
                       <div className="flex justify-between border-b border-slate-200 py-1.5">
                         <span className="text-slate-500">CPU Throttling:</span>

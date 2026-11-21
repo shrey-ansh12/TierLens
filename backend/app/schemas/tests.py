@@ -38,6 +38,9 @@ class FailureResponse(BaseModel):
     component: Optional[str] = None
     url_or_file: Optional[str] = None
     screenshot_url: Optional[str] = None
+    users_hit_millions: Optional[int] = None
+    population_pct: Optional[float] = None
+    rank: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -113,3 +116,5 @@ class DualComparisonResponse(BaseModel):
     device_specific_failures: List[Dict[str, Any]] = []
     recommendations: Optional[List[Dict[str, Any]]] = None
     root_cause_summary: Optional[Dict[str, Any]] = None
+    ranked_failures: Optional[List[Dict[str, Any]]] = None
+    cheap_phone_verdict: Optional[Dict[str, Any]] = None
