@@ -119,7 +119,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 app.add_middleware(SecurityHeadersMiddleware)
-
 # Static Files for Artifacts
 os.makedirs(settings.ARTIFACTS_DIR, exist_ok=True)
 app.mount("/artifacts", StaticFiles(directory=settings.ARTIFACTS_DIR), name="artifacts")
