@@ -5,7 +5,7 @@ const cspHeader = `
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: blob: https://tierlens.onrender.com;
   font-src 'self' data:;
-  connect-src 'self' https://tierlens.onrender.com;
+  connect-src 'self' https://tierlens.onrender.com http://localhost:8000 http://127.0.0.1:8000;
   object-src 'none';
   base-uri 'self';
   form-action 'self';
