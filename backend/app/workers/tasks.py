@@ -328,7 +328,8 @@ async def orchestrate_web_test_job(
                     has_failed = any(r[0].status == TestStatus.FAILED.value for r in completed_runs)
                     if has_failed:
                         final_status = JobState.FAILED.value
-                        progress_msg = "Device test execution failed on target application."
+                        failed_reasons = [r[1].error_message for r in completed_runs if r[1] and r[1].error_message]
+                        progress_msg = f"Target application issue: {'; '.join(dict.fromkeys(failed_reasons))}" if failed_reasons else "Device test execution failed on target application."
                     elif has_warnings:
                         final_status = JobState.COMPLETED_WITH_WARNINGS.value
                         progress_msg = "Multi-device comparison completed with non-fatal warnings."

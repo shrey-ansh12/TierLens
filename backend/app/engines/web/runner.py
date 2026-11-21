@@ -120,6 +120,7 @@ async def run_web_performance_test(
                             "--disable-dev-shm-usage",
                             "--disable-gpu",
                             "--disable-software-rasterizer",
+                            "--disable-blink-features=AutomationControlled",
                             "--mute-audio"
                         ]
                     )
@@ -187,12 +188,12 @@ async def run_web_performance_test(
                     "url_or_file": safe_url
                 })
 
-            # Listen to failed subrequests
+            # Listen to failed subrequests (non-fatal warnings)
             def on_request_failed(request):
                 failure_text = request.failure or "Request Failed"
                 sig = hashlib.sha256(f"SUBREQ_FAIL_{request.url[:100]}_{failure_text}".encode()).hexdigest()[:16]
                 result.failures.append({
-                    "failure_type": ErrorCategory.NETWORK_ERROR.value,
+                    "failure_type": "SUBRESOURCE_WARNING",
                     "title": f"Subresource Request Failed ({request.method})",
                     "message": f"URL: {request.url}\nFailure: {failure_text}",
                     "error_signature": sig,
@@ -458,7 +459,11 @@ async def run_web_performance_test(
                     ErrorCategory.HTTP_ERROR.value
                 }
                 has_fatal = any(f["failure_type"] in fatal_categories for f in result.failures)
-                if not has_fatal:
+                if len(result.metrics) > 0 and status_code < 400 and not is_access_restricted:
+                    # Page loaded and vital metrics were successfully collected
+                    result.success = True
+                    result.completed_with_warnings = len(result.failures) > 0
+                elif not has_fatal:
                     result.success = True
                     result.completed_with_warnings = len(result.failures) > 0
                 else:
