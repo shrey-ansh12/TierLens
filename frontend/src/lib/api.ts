@@ -77,7 +77,7 @@ export class ApiClient {
         if (reauth && reauth.access_token) {
           this.setToken(reauth.access_token);
           headers["Authorization"] = `Bearer ${reauth.access_token}`;
-          const retryRes = await fetch(`${API_BASE}${endpoint}`, {
+          const retryRes = await fetch(`${baseUrl}${endpoint}`, {
             ...options,
             headers,
           });
