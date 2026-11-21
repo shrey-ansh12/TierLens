@@ -27,8 +27,11 @@ dist/
 *.sqlite3
 tierlens.db
 artifacts/*.png
+backend/artifacts/*.png
 artifacts/*.apk
+backend/artifacts/*.apk
 artifacts/*.har
+backend/artifacts/*.har
 !artifacts/.gitkeep
 
 # Environment variables
