@@ -1,4 +1,21 @@
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/, "");
+function getApiBase(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== "undefined") {
+    // When running on HTTPS (production Vercel / Cloud), always route to the live Render backend
+    // to prevent browser Mixed Content (HTTPS -> HTTP) blocking and connection refused errors
+    if (window.location.protocol === "https:") {
+      if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
+        return envUrl.replace(/\/+$/, "");
+      }
+      return "https://tierlens.onrender.com";
+    }
+    // If running in browser on localhost
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      return (envUrl || "http://localhost:8000").replace(/\/+$/, "");
+    }
+  }
+  return (envUrl || "https://tierlens.onrender.com").replace(/\/+$/, "");
+}
 
 export class ApiClient {
   private static token: string | null = null;
@@ -39,7 +56,8 @@ export class ApiClient {
       headers["Content-Type"] = "application/json";
     }
 
-    const res = await fetch(`${API_BASE}${endpoint}`, {
+    const base = getApiBase();
+    const res = await fetch(`${base}${endpoint}`, {
       ...options,
       headers,
     });
@@ -52,7 +70,7 @@ export class ApiClient {
         if (reauth && reauth.access_token) {
           this.setToken(reauth.access_token);
           headers["Authorization"] = `Bearer ${reauth.access_token}`;
-          const retryRes = await fetch(`${API_BASE}${endpoint}`, {
+          const retryRes = await fetch(`${base}${endpoint}`, {
             ...options,
             headers,
           });
