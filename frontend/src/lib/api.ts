@@ -1,13 +1,13 @@
 function getApiBase(): string {
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
   if (typeof window !== "undefined") {
-    // When running on HTTPS (production Vercel / Cloud), always route to the live Render backend
-    // to prevent browser Mixed Content (HTTPS -> HTTP) blocking and connection refused errors
+    // When running on HTTPS (production Vercel / Cloud), use same-origin rewrite if available,
+    // which eliminates all cross-origin CORS checks and SSL mixing issues.
     if (window.location.protocol === "https:") {
       if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
         return envUrl.replace(/\/+$/, "");
       }
-      return "https://tierlens.onrender.com";
+      return "";
     }
     // If running in browser on localhost
     if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
@@ -67,12 +67,34 @@ export class ApiClient {
         ...options,
         headers,
       });
+      // Fallback: If rewrite returned 404 or 502, retry directly against live Render backend
+      if (!res.ok && (res.status === 404 || res.status === 502) && base === "") {
+        const fallbackRes = await fetch(`https://tierlens.onrender.com${endpoint}`, {
+          ...options,
+          headers,
+        });
+        if (fallbackRes.ok) {
+          res = fallbackRes;
+        }
+      }
     } catch (netErr: any) {
-      console.error(`Network fetch failed for ${base}${endpoint}:`, netErr);
-      throw new Error(
-        `Unable to connect to TierLens API server at ${base}. ` +
-        `If running locally, start the backend via .\\run.ps1. If deployed, verify ${base}/health.`
-      );
+      if (base === "") {
+        try {
+          res = await fetch(`https://tierlens.onrender.com${endpoint}`, {
+            ...options,
+            headers,
+          });
+        } catch {
+          console.error(`Direct Render fallback failed for ${endpoint}:`, netErr);
+          throw new Error("Unable to connect to TierLens API server. Please verify backend health.");
+        }
+      } else {
+        console.error(`Network fetch failed for ${base}${endpoint}:`, netErr);
+        throw new Error(
+          `Unable to connect to TierLens API server at ${base}. ` +
+          `If running locally, start the backend via .\\run.ps1. If deployed, verify backend health.`
+        );
+      }
     }
 
     if (res.status === 401 && !endpoint.includes("/auth/")) {
