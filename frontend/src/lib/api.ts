@@ -1,4 +1,15 @@
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/, "");
+export const getApiBase = (): string => {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, "");
+  }
+  if (typeof window !== "undefined") {
+    // If running in browser on a production domain (e.g. Vercel)
+    if (window.location.protocol === "https:" && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1")) {
+      return "https://tierlens.onrender.com";
+    }
+  }
+  return "http://localhost:8000";
+};
 
 export class ApiClient {
   private static token: string | null = null;
@@ -25,6 +36,10 @@ export class ApiClient {
     }
   }
 
+  static getBaseUrl(): string {
+    return getApiBase();
+  }
+
   private static async request(endpoint: string, options: RequestInit = {}) {
     const headers: Record<string, string> = {
       ...(options.headers as Record<string, string> || {}),
@@ -39,10 +54,20 @@ export class ApiClient {
       headers["Content-Type"] = "application/json";
     }
 
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    const baseUrl = getApiBase();
+    let res: Response;
+    try {
+      res = await fetch(`${baseUrl}${endpoint}`, {
+        ...options,
+        headers,
+      });
+    } catch (netErr: any) {
+      console.error(`Network fetch failed for ${baseUrl}${endpoint}:`, netErr);
+      throw new Error(
+        `Unable to connect to TierLens API server at ${baseUrl}. ` +
+        `If running locally, start the backend via .\\run.ps1. If deployed, verify ${baseUrl}/health.`
+      );
+    }
 
     if (!res.ok) {
       let errDetail = "Request failed";

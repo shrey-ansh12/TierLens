@@ -41,6 +41,8 @@ const COLOR_MAP: Record<string, string> = {
   RootCause: "#EA580C",        // Orange
   Metric: "#16A34A",           // Emerald
   Recommendation: "#DB2777",   // Pink
+  MarketSegment: "#F59E0B",    // Amber
+  NetworkCohort: "#10B981",    // Emerald
 };
 
 export default function IntelligenceGraph({ data, onRefresh }: Props) {
@@ -324,7 +326,7 @@ export default function IntelligenceGraph({ data, onRefresh }: Props) {
           <div className="flex justify-between items-start mb-2">
             <span
               className="px-2 py-0.5 rounded text-[10px] font-bold"
-              style={{ backgroundColor: `${COLOR_MAP[selectedNode.label]}15`, color: COLOR_MAP[selectedNode.label] }}
+              style={{ backgroundColor: `${(COLOR_MAP[selectedNode.label] || "#64748B")}15`, color: (COLOR_MAP[selectedNode.label] || "#64748B") }}
             >
               {selectedNode.label}
             </span>

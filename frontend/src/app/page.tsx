@@ -44,7 +44,8 @@ import {
   Square,
   Wrench,
   Sparkles,
-  HelpCircle
+  HelpCircle,
+  Menu
 } from "lucide-react";
 import {
   BarChart,
@@ -326,6 +327,12 @@ const CHART_PALETTE = [
 
 export default function TierLensApp() {
   const [activeTab, setActiveTab] = useState<TabType>("overview");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const navigateToTab = (tab: any) => {
+    setActiveTab(tab);
+    setMobileMenuOpen(false);
+  };
   const [systemHealth, setSystemHealth] = useState<any>(null);
   const [deviceLabStatus, setDeviceLabStatus] = useState<any>(null);
 
@@ -819,20 +826,39 @@ export default function TierLensApp() {
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
+      {/* Mobile Backdrop */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden transition-opacity"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* SIDEBAR NAVIGATION */}
-      <aside className="w-64 border-r border-slate-200 bg-white flex flex-col justify-between shrink-0 select-none">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 select-none transform transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
+        mobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+      }`}>
         <div>
           {/* Logo */}
-          <div className="p-4 border-b border-slate-200 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-              <Layers className="w-5 h-5" />
+          <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                <Layers className="w-5 h-5" />
+              </div>
+              <div>
+                <h1 className="font-extrabold text-sm tracking-tight text-slate-900 flex items-center gap-1.5">
+                  TierLens <span className="text-[10px] bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-0.2 rounded font-mono">v2.0</span>
+                </h1>
+                <p className="text-[10px] text-slate-500 font-medium">Configurable Device Testing</p>
+              </div>
             </div>
-            <div>
-              <h1 className="font-extrabold text-sm tracking-tight text-slate-900 flex items-center gap-1.5">
-                TierLens <span className="text-[10px] bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-0.2 rounded font-mono">v2.0</span>
-              </h1>
-              <p className="text-[10px] text-slate-500 font-medium">Configurable Device Testing</p>
-            </div>
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 lg:hidden"
+              aria-label="Close navigation"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
           {/* Navigation Links */}
@@ -841,7 +867,7 @@ export default function TierLensApp() {
               Simulation & Testing
             </div>
             <button
-              onClick={() => setActiveTab("overview")}
+              onClick={() => navigateToTab("overview")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
                 activeTab === "overview" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
@@ -850,7 +876,7 @@ export default function TierLensApp() {
               Main Dashboard
             </button>
             <button
-              onClick={() => setActiveTab("web_test")}
+              onClick={() => navigateToTab("web_test")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
                 activeTab === "web_test" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
@@ -859,7 +885,7 @@ export default function TierLensApp() {
               Website Testing
             </button>
             <button
-              onClick={() => setActiveTab("device_builder")}
+              onClick={() => navigateToTab("device_builder")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
                 activeTab === "device_builder" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
@@ -868,7 +894,7 @@ export default function TierLensApp() {
               Device Config Builder
             </button>
             <button
-              onClick={() => setActiveTab("android_test")}
+              onClick={() => navigateToTab("android_test")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
                 activeTab === "android_test" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
@@ -877,7 +903,7 @@ export default function TierLensApp() {
               Android APK Testing
             </button>
             <button
-              onClick={() => setActiveTab("device_lab")}
+              onClick={() => navigateToTab("device_lab")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
                 activeTab === "device_lab" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
@@ -890,7 +916,7 @@ export default function TierLensApp() {
               Comparison & Analysis
             </div>
             <button
-              onClick={() => setActiveTab("compare")}
+              onClick={() => navigateToTab("compare")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
                 activeTab === "compare" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
@@ -899,7 +925,7 @@ export default function TierLensApp() {
               Device Comparison
             </button>
             <button
-              onClick={() => setActiveTab("failures")}
+              onClick={() => navigateToTab("failures")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
                 activeTab === "failures" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
@@ -908,7 +934,7 @@ export default function TierLensApp() {
               Failure Explorer
             </button>
             <button
-              onClick={() => setActiveTab("rca")}
+              onClick={() => navigateToTab("rca")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
                 activeTab === "rca" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
@@ -917,7 +943,7 @@ export default function TierLensApp() {
               Root Cause Analysis
             </button>
             <button
-              onClick={() => setActiveTab("graph")}
+              onClick={() => navigateToTab("graph")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
                 activeTab === "graph" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
@@ -926,7 +952,7 @@ export default function TierLensApp() {
               Neo4j Intelligence Graph
             </button>
             <button
-              onClick={() => setActiveTab("optimizations")}
+              onClick={() => navigateToTab("optimizations")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
                 activeTab === "optimizations" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
@@ -939,7 +965,7 @@ export default function TierLensApp() {
               Governance & Runbooks
             </div>
             <button
-              onClick={() => setActiveTab("reports")}
+              onClick={() => navigateToTab("reports")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
                 activeTab === "reports" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
@@ -948,7 +974,7 @@ export default function TierLensApp() {
               Audit Reports
             </button>
             <button
-              onClick={() => setActiveTab("settings")}
+              onClick={() => navigateToTab("settings")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
                 activeTab === "settings" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
@@ -957,7 +983,7 @@ export default function TierLensApp() {
               Settings
             </button>
             <button
-              onClick={() => setActiveTab("docs")}
+              onClick={() => navigateToTab("docs")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
                 activeTab === "docs" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
@@ -983,18 +1009,25 @@ export default function TierLensApp() {
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 flex flex-col overflow-hidden bg-slate-50">
         {/* TOP STATUS BAR */}
-        <header className="h-12 border-b border-slate-200 bg-white/90 backdrop-blur px-6 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3 text-xs">
-            <span className="font-semibold text-slate-700">Environment:</span>
-            <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-200 font-mono text-[10px]">
-              Neon PostgreSQL Connected
+        <header className="h-14 lg:h-12 border-b border-slate-200 bg-white/95 backdrop-blur px-3 sm:px-6 flex items-center justify-between shrink-0 gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 text-xs overflow-x-auto py-1">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-1.5 -ml-1 rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden shrink-0"
+              aria-label="Toggle navigation menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <span className="font-semibold text-slate-700 hidden sm:inline">Environment:</span>
+            <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-200 font-mono text-[10px] whitespace-nowrap">
+              PostgreSQL Connected
             </span>
-            <span className={`px-2 py-0.5 rounded font-mono text-[10px] ${
+            <span className={`px-2 py-0.5 rounded font-mono text-[10px] whitespace-nowrap ${
               systemHealth?.neo4j?.connected
                 ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                 : "bg-slate-100 text-slate-500 border border-slate-200"
             }`}>
-              Neo4j: {systemHealth?.neo4j?.connected ? "Online" : "Offline (Relational Fallback Active)"}
+              Neo4j: {systemHealth?.neo4j?.connected ? "Online" : "Fallback Active"}
             </span>
           </div>
 
@@ -1022,7 +1055,7 @@ export default function TierLensApp() {
         )}
 
         {/* SCROLLABLE VIEW CONTAINER */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
 
           {/* ========================================================================= */}
           {/* TAB: OVERVIEW */}
@@ -1043,7 +1076,7 @@ export default function TierLensApp() {
                     </p>
                   </div>
                   <button
-                    onClick={() => setActiveTab("device_builder")}
+                    onClick={() => navigateToTab("device_builder")}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs rounded-lg transition flex items-center gap-1.5 shadow-md shadow-blue-600/20"
                   >
                     <Plus className="w-3.5 h-3.5" /> Configure Device
@@ -1053,7 +1086,7 @@ export default function TierLensApp() {
                 {/* Quick Action Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
                   <div
-                    onClick={() => setActiveTab("web_test")}
+                    onClick={() => navigateToTab("web_test")}
                     className="p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-blue-500/50 cursor-pointer transition group"
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -1067,7 +1100,7 @@ export default function TierLensApp() {
                   </div>
 
                   <div
-                    onClick={() => setActiveTab("device_builder")}
+                    onClick={() => navigateToTab("device_builder")}
                     className="p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-indigo-500/50 cursor-pointer transition group"
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -1081,7 +1114,7 @@ export default function TierLensApp() {
                   </div>
 
                   <div
-                    onClick={() => setActiveTab("compare")}
+                    onClick={() => navigateToTab("compare")}
                     className="p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-emerald-500/50 cursor-pointer transition group"
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -1109,7 +1142,7 @@ export default function TierLensApp() {
                     </p>
                   </div>
                   <button
-                    onClick={() => setActiveTab("device_builder")}
+                    onClick={() => navigateToTab("device_builder")}
                     className="text-xs text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1"
                   >
                     Manage Profiles <ChevronRight className="w-3.5 h-3.5" />
@@ -1711,7 +1744,7 @@ export default function TierLensApp() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setActiveTab("device_builder")}
+                    onClick={() => navigateToTab("device_builder")}
                     className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1"
                   >
                     <Sliders className="w-3.5 h-3.5" /> Open Device Builder
@@ -1845,7 +1878,7 @@ export default function TierLensApp() {
                               {/* Screen / Viewport */}
                               <div>
                                 <label className="block text-[11px] font-semibold text-slate-700 mb-1">Screen Size & Viewport Emulation</label>
-                                <div className="grid grid-cols-3 gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                   {[
                                     { id: "mobile_budget", label: "Budget (360x800)" },
                                     { id: "mobile_standard", label: "Standard (390x844)" },
@@ -2343,7 +2376,7 @@ export default function TierLensApp() {
                   <div className="p-12 text-center text-slate-500 text-xs space-y-3">
                     <p>No comparison execution loaded yet.</p>
                     <button
-                      onClick={() => setActiveTab("web_test")}
+                      onClick={() => navigateToTab("web_test")}
                       className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-semibold"
                     >
                       Go to Website Testing & Run Test
