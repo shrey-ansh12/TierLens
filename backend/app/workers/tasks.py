@@ -315,6 +315,7 @@ async def orchestrate_web_test_job(
                     progress_message="Aggregating performance metrics, degradation percentages, and RCA findings..."
                 )
 
+                session.expire_all()
                 comp_payload = await build_comparison_payload(comparison_group_id, session)
 
                 if len(completed_runs) == 0:

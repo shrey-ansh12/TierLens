@@ -851,10 +851,52 @@ export default function TierLensApp() {
     }
   };
 
+  // Synthesize robust metrics diff directly from multi_metrics_diff or individual run metrics
+  const effectiveMetricsDiff = useMemo(() => {
+    if (comparisonData?.multi_metrics_diff && Object.keys(comparisonData.multi_metrics_diff).length > 0) {
+      return comparisonData.multi_metrics_diff;
+    }
+    if (comparisonData?.runs && comparisonData.runs.length > 0) {
+      const diff: Record<string, any> = {};
+      const runProfiles = comparisonData.runs.map((r: any) => ({
+        name: r.device_profile?.name || (r.tier === "GOOD_BUDGET" ? "Good Budget Tier (Galaxy A14 / Moto G)" : "Entry-Level Tier (Redmi 9A / Nokia C)"),
+        metrics: (r.metrics || []).reduce((acc: any, m: any) => {
+          acc[m.name] = { value: m.value, unit: m.unit };
+          return acc;
+        }, {})
+      }));
+      const allMetricNames = new Set<string>();
+      runProfiles.forEach((rp: any) => Object.keys(rp.metrics).forEach(k => allMetricNames.add(k)));
+
+      allMetricNames.forEach(mName => {
+        const values: Record<string, number> = {};
+        let unit = "";
+        runProfiles.forEach((rp: any) => {
+          if (rp.metrics[mName]) {
+            values[rp.name] = rp.metrics[mName].value;
+            unit = rp.metrics[mName].unit;
+          }
+        });
+        const numeric = Object.values(values);
+        const baseline = numeric.length > 0 ? numeric[0] : 0;
+        const degradations_pct: Record<string, number> = {};
+        Object.entries(values).forEach(([pName, val]) => {
+          if (baseline > 0 && val > baseline) {
+            degradations_pct[pName] = Math.round(((val - baseline) / baseline) * 100);
+          }
+        });
+        diff[mName] = { unit, values, degradations_pct };
+      });
+      return diff;
+    }
+    return null;
+  }, [comparisonData]);
+
   // Construct dynamic Recharts chart data across all tested configurations
   const comparisonChartData = useMemo(() => {
-    if (comparisonData?.multi_metrics_diff) {
-      return Object.entries(comparisonData.multi_metrics_diff).map(([key, val]: [string, any]) => {
+    const diff = effectiveMetricsDiff || comparisonData?.multi_metrics_diff;
+    if (diff && Object.keys(diff).length > 0) {
+      return Object.entries(diff).map(([key, val]: [string, any]) => {
         const row: any = { name: key, unit: val.unit };
         if (val.values) {
           Object.entries(val.values).forEach(([pName, pVal]) => {
@@ -864,7 +906,7 @@ export default function TierLensApp() {
         return row;
       });
     }
-    if (comparisonData?.metrics_diff) {
+    if (comparisonData?.metrics_diff && Object.keys(comparisonData.metrics_diff).length > 0) {
       return Object.entries(comparisonData.metrics_diff).map(([key, val]: [string, any]) => ({
         name: key,
         "Good Budget": val.good_budget,
@@ -873,20 +915,27 @@ export default function TierLensApp() {
       }));
     }
     return [];
-  }, [comparisonData]);
+  }, [comparisonData, effectiveMetricsDiff]);
 
   const profileKeysInChart = useMemo(() => {
-    if (comparisonChartData.length === 0) return [];
     const keys = new Set<string>();
-    comparisonChartData.forEach((row: any) => {
-      Object.keys(row).forEach(k => {
-        if (k !== "name" && k !== "unit") {
-          keys.add(k);
-        }
+    if (comparisonChartData.length > 0) {
+      comparisonChartData.forEach((row: any) => {
+        Object.keys(row).forEach(k => {
+          if (k !== "name" && k !== "unit") {
+            keys.add(k);
+          }
+        });
       });
-    });
+    }
+    if (keys.size === 0 && comparisonData?.configurations && comparisonData.configurations.length > 0) {
+      comparisonData.configurations.forEach((c: any) => keys.add(c.name));
+    }
+    if (keys.size === 0 && comparisonData?.runs && comparisonData.runs.length > 0) {
+      comparisonData.runs.forEach((r: any) => keys.add(r.device_profile?.name || (r.tier === "GOOD_BUDGET" ? "Good Budget Tier (Galaxy A14 / Moto G)" : "Entry-Level Tier (Redmi 9A / Nokia C)")));
+    }
     return Array.from(keys);
-  }, [comparisonChartData]);
+  }, [comparisonChartData, comparisonData]);
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
@@ -2272,31 +2321,36 @@ export default function TierLensApp() {
                   )}
 
                   {/* Multi-Device Metrics Table */}
-                  {comparisonData?.multi_metrics_diff && (
+                  {effectiveMetricsDiff && Object.keys(effectiveMetricsDiff).length > 0 && (
                     <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                      <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-                        <Sliders className="w-4 h-4 text-blue-400" /> Metric Breakdown & Degradation Percentages
-                      </h4>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                          <Sliders className="w-4 h-4 text-blue-500" /> Metric Breakdown & Degradation Percentages
+                        </h4>
+                        <span className="text-[11px] font-mono text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded border border-slate-200">
+                          {Object.keys(effectiveMetricsDiff).length} Metrics Measured Across Devices
+                        </span>
+                      </div>
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs">
                           <thead>
-                            <tr className="border-b border-slate-200 text-slate-500 font-semibold bg-slate-50">
+                            <tr className="border-b border-slate-200 text-slate-700 font-bold bg-slate-100">
                               <th className="py-2.5 px-3">Metric</th>
                               <th className="py-2.5 px-3">Unit</th>
                               {profileKeysInChart.map(pName => (
-                                <th key={pName} className="py-2.5 px-3 text-slate-900">{pName}</th>
+                                <th key={pName} className="py-2.5 px-3 text-slate-900 font-bold">{pName}</th>
                               ))}
-                              <th className="py-2.5 px-3 text-amber-400">Degradation vs Baseline</th>
+                              <th className="py-2.5 px-3 text-amber-700 font-bold">Degradation vs Baseline</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-800/80 font-mono">
-                            {Object.entries(comparisonData.multi_metrics_diff).map(([mName, mData]: [string, any]) => {
+                          <tbody className="divide-y divide-slate-200 font-mono">
+                            {Object.entries(effectiveMetricsDiff).map(([mName, mData]: [string, any]) => {
                               return (
-                                <tr key={mName} className="hover:bg-slate-100/30">
+                                <tr key={mName} className="hover:bg-slate-50/80 transition">
                                   <td className="py-3 px-3 font-bold text-slate-900">{mName}</td>
-                                  <td className="py-3 px-3 text-slate-500">{mData.unit}</td>
+                                  <td className="py-3 px-3 text-slate-600">{mData.unit}</td>
                                   {profileKeysInChart.map(pName => (
-                                    <td key={pName} className="py-3 px-3 text-slate-200">
+                                    <td key={pName} className="py-3 px-3 text-slate-900 font-bold">
                                       {mData.values?.[pName] !== undefined && mData.values?.[pName] !== null
                                         ? mData.values[pName]
                                         : "N/A"}
@@ -2306,15 +2360,15 @@ export default function TierLensApp() {
                                     {mData.degradations_pct && Object.keys(mData.degradations_pct).length > 0 ? (
                                       <div className="space-y-0.5 text-[10px]">
                                         {Object.entries(mData.degradations_pct).map(([pName, pct]: [string, any]) => (
-                                          pct > 0 && (
-                                            <span key={pName} className="inline-block mr-2 px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20">
-                                              {pName}: +{pct}%
+                                          pct > 0 ? (
+                                            <span key={pName} className="inline-block mr-2 px-2 py-0.5 rounded bg-rose-50 text-rose-700 font-bold border border-rose-200">
+                                              {pName}: +{pct}% Slowdown
                                             </span>
-                                          )
+                                          ) : null
                                         ))}
                                       </div>
                                     ) : (
-                                      <span className="text-slate-500 text-[10px]">Baseline</span>
+                                      <span className="text-emerald-700 font-bold text-[10px]">Baseline Fast</span>
                                     )}
                                   </td>
                                 </tr>
@@ -2322,6 +2376,111 @@ export default function TierLensApp() {
                             })}
                           </tbody>
                         </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ACTUAL TEST EXECUTION LOGS, WARNINGS & CRASH REASONS */}
+                  {comparisonData?.runs && comparisonData.runs.length > 0 && (
+                    <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm space-y-4">
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                          <Terminal className="w-4 h-4 text-indigo-500" />
+                          Actual Target Website Execution Logs & Failure Diagnosis
+                        </h4>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Real CDP network trace errors, console warnings, and device crash reasons recorded during live browser testing.
+                        </p>
+                      </div>
+
+                      <div className="space-y-3">
+                        {comparisonData.runs.map((r: any, rIdx: number) => {
+                          const profName = r.device_profile?.name || (r.tier === "GOOD_BUDGET" ? "Good Budget Tier (Galaxy A14 / Moto G)" : "Entry-Level Tier (Redmi 9A / Nokia C)");
+                          const isFailed = r.status === "FAILED";
+                          const hasWarnings = r.status === "COMPLETED_WITH_WARNINGS" || (r.failures && r.failures.length > 0);
+                          const durationSec = ((r.duration_ms || 0) / 1000).toFixed(1);
+
+                          return (
+                            <div key={r.id || rIdx} className={`p-4 rounded-xl border ${
+                              isFailed
+                                ? "bg-rose-50/70 border-rose-300"
+                                : hasWarnings
+                                  ? "bg-amber-50/60 border-amber-300"
+                                  : "bg-slate-50 border-slate-200"
+                            }`}>
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-200">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-xs text-slate-900">{profName}</span>
+                                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold border ${
+                                    isFailed
+                                      ? "bg-rose-100 text-rose-800 border-rose-300"
+                                      : hasWarnings
+                                        ? "bg-amber-100 text-amber-800 border-amber-300"
+                                        : "bg-emerald-100 text-emerald-800 border-emerald-300"
+                                  }`}>
+                                    {isFailed ? "🚨 CRASHED / FAILED" : hasWarnings ? "⚠️ NON-FATAL WARNINGS" : "✅ CLEAN EXECUTION"}
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-slate-600 font-mono">
+                                  Execution Duration: <span className="font-bold text-slate-800">{durationSec}s ({r.duration_ms}ms)</span>
+                                </div>
+                              </div>
+
+                              {/* Crash / Failure Diagnosis if Failed */}
+                              {isFailed && (
+                                <div className="mt-3 p-3 rounded-lg bg-rose-100/90 border border-rose-300 text-xs text-rose-900 space-y-1">
+                                  <div className="font-bold flex items-center gap-1.5 text-rose-800">
+                                    <AlertOctagon className="w-4 h-4 text-rose-600" />
+                                    Website Crashed or Froze under {profName} constraints!
+                                  </div>
+                                  <p className="text-[11px] text-rose-800 font-mono">{r.failure_summary || "Browser navigation or main thread blocked beyond timeout limits."}</p>
+                                  <p className="text-[11px] text-rose-700">
+                                    Reason: Constrained entry-level hardware (low RAM, aggressive 8x CPU throttling, and slow network) exhausted device resources causing the target site to freeze or crash.
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Detailed Failure & Warning Logs */}
+                              {r.failures && r.failures.length > 0 ? (
+                                <div className="mt-3 space-y-2">
+                                  <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                                    Captured Network & Console Logs ({r.failures.length}):
+                                  </div>
+                                  <div className="space-y-1.5 font-mono text-[11px]">
+                                    {r.failures.map((f: any, fIdx: number) => (
+                                      <div key={f.id || fIdx} className="p-3 rounded-lg bg-white border border-slate-200 space-y-1 shadow-sm text-slate-800">
+                                        <div className="flex items-center justify-between text-[10px]">
+                                          <span className="font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">
+                                            {f.failure_type || "WARNING"}
+                                          </span>
+                                          <span className="text-slate-600 font-mono">{f.error_signature || "Runtime Issue"}</span>
+                                        </div>
+                                        <div className="font-semibold text-slate-900 text-xs">{f.title}</div>
+                                        {f.message && (
+                                          <div className="text-[11px] text-slate-700 bg-slate-50 p-2 rounded border border-slate-200/80 overflow-x-auto whitespace-pre-wrap">
+                                            {f.message}
+                                          </div>
+                                        )}
+                                        {f.url_or_file && (
+                                          <div className="text-[10px] text-slate-500 truncate pt-0.5">
+                                            Failing Endpoint: <span className="text-blue-600 underline">{f.url_or_file}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : (
+                                !isFailed && (
+                                  <div className="mt-2.5 text-[11px] text-emerald-800 flex items-center gap-1.5">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                    All page assets, JavaScript bundles, stylesheets, and APIs loaded cleanly without errors.
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

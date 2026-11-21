@@ -68,7 +68,7 @@ class RecommendationResponse(BaseModel):
     remediation: str
     verification_steps: str
     status: str
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -92,7 +92,7 @@ class TestRunResponse(BaseModel):
     recommendations: List[RecommendationResponse] = []
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

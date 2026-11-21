@@ -120,7 +120,8 @@ def serialize_test_run(r: Optional[TestRun]) -> Optional[Dict[str, Any]]:
                 "supporting_evidence": rec.supporting_evidence,
                 "remediation": rec.remediation,
                 "verification_steps": rec.verification_steps,
-                "status": rec.status
+                "status": rec.status,
+                "created_at": rec.created_at.isoformat() if getattr(rec, "created_at", None) else None
             })
     except Exception:
         recs_data = []
@@ -308,7 +309,8 @@ async def build_comparison_payload(comparison_group_id: str, db: AsyncSession) -
                         "supporting_evidence": rec.supporting_evidence,
                         "remediation": rec.remediation,
                         "verification_steps": rec.verification_steps,
-                        "status": rec.status
+                        "status": rec.status,
+                "created_at": rec.created_at.isoformat() if getattr(rec, "created_at", None) else None
                     })
 
     # Calculate Indian user demographic impact ranking (T1.2: "ranked by how many users it hits")
