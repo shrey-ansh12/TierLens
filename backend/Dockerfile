@@ -5,26 +5,40 @@ WORKDIR /app
 ENV PYTHONUNBUFFERED=1 \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# 1. Install base utilities, build tools, postgres dev libraries, and sudo
+# Install system dependencies for Playwright Chromium & build tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     wget \
     git \
     libpq-dev \
-    sudo \
+    libnss3 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libpango-1.0-0 \
+    libcairo2 \
+    libasound2 \
+    libxshmfence1 \
+    libx11-xcb1 \
+    libxcb1 \
+    libx11-6 \
+    libglib2.0-0 \
+    fonts-liberation \
+    fonts-noto-color-emoji \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+RUN playwright install chromium
 
-# 3. Fresh apt update + Playwright Chromium with all OS dependencies + cleanup
-RUN apt-get update && \
-    playwright install --with-deps chromium && \
-    rm -rf /var/lib/apt/lists/*
-
-# 4. Copy application source
 COPY . .
 
 EXPOSE 8000
