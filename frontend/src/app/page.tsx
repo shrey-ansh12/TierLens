@@ -784,20 +784,20 @@ export default function TierLensApp() {
   }, [comparisonChartData]);
 
   return (
-    <div className="flex h-screen bg-[#080C14] text-slate-100 font-sans overflow-hidden">
+    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
       {/* SIDEBAR NAVIGATION */}
-      <aside className="w-64 border-r border-slate-800 bg-[#0B111E] flex flex-col justify-between shrink-0 select-none">
+      <aside className="w-64 border-r border-slate-200 bg-white flex flex-col justify-between shrink-0 select-none">
         <div>
           {/* Logo */}
-          <div className="p-4 border-b border-slate-800 flex items-center gap-3">
+          <div className="p-4 border-b border-slate-200 flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
               <Layers className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-extrabold text-sm tracking-tight text-white flex items-center gap-1.5">
-                TierLens <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/30 px-1.5 py-0.2 rounded font-mono">v2.0</span>
+              <h1 className="font-extrabold text-sm tracking-tight text-slate-900 flex items-center gap-1.5">
+                TierLens <span className="text-[10px] bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-0.2 rounded font-mono">v2.0</span>
               </h1>
-              <p className="text-[10px] text-slate-400 font-medium">Configurable Device Testing</p>
+              <p className="text-[10px] text-slate-500 font-medium">Configurable Device Testing</p>
             </div>
           </div>
 
@@ -809,7 +809,7 @@ export default function TierLensApp() {
             <button
               onClick={() => setActiveTab("overview")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "overview" ? "bg-blue-600/15 text-blue-400 border border-blue-500/30 font-semibold" : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                activeTab === "overview" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
             >
               <Activity className="w-4 h-4 text-blue-500" />
@@ -818,7 +818,7 @@ export default function TierLensApp() {
             <button
               onClick={() => setActiveTab("web_test")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "web_test" ? "bg-blue-600/15 text-blue-400 border border-blue-500/30 font-semibold" : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                activeTab === "web_test" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
             >
               <Globe className="w-4 h-4 text-blue-500" />
@@ -827,7 +827,7 @@ export default function TierLensApp() {
             <button
               onClick={() => setActiveTab("device_builder")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "device_builder" ? "bg-blue-600/15 text-blue-400 border border-blue-500/30 font-semibold" : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                activeTab === "device_builder" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
             >
               <Sliders className="w-4 h-4 text-indigo-400" />
@@ -836,7 +836,7 @@ export default function TierLensApp() {
             <button
               onClick={() => setActiveTab("android_test")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "android_test" ? "bg-blue-600/15 text-blue-400 border border-blue-500/30 font-semibold" : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                activeTab === "android_test" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
             >
               <Smartphone className="w-4 h-4 text-emerald-500" />
@@ -845,7 +845,7 @@ export default function TierLensApp() {
             <button
               onClick={() => setActiveTab("device_lab")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "device_lab" ? "bg-blue-600/15 text-blue-400 border border-blue-500/30 font-semibold" : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                activeTab === "device_lab" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
             >
               <Radio className="w-4 h-4 text-purple-400" />
@@ -858,7 +858,7 @@ export default function TierLensApp() {
             <button
               onClick={() => setActiveTab("compare")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "compare" ? "bg-blue-600/15 text-blue-400 border border-blue-500/30 font-semibold" : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                activeTab === "compare" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
             >
               <GitCompare className="w-4 h-4 text-blue-400" />
@@ -867,7 +867,7 @@ export default function TierLensApp() {
             <button
               onClick={() => setActiveTab("failures")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "failures" ? "bg-blue-600/15 text-blue-400 border border-blue-500/30 font-semibold" : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                activeTab === "failures" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
             >
               <AlertOctagon className="w-4 h-4 text-rose-500" />
@@ -876,7 +876,7 @@ export default function TierLensApp() {
             <button
               onClick={() => setActiveTab("rca")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "rca" ? "bg-blue-600/15 text-blue-400 border border-blue-500/30 font-semibold" : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                activeTab === "rca" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
             >
               <Brain className="w-4 h-4 text-pink-400" />
@@ -885,7 +885,7 @@ export default function TierLensApp() {
             <button
               onClick={() => setActiveTab("graph")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "graph" ? "bg-blue-600/15 text-blue-400 border border-blue-500/30 font-semibold" : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                activeTab === "graph" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
             >
               <Database className="w-4 h-4 text-amber-400" />
@@ -894,7 +894,7 @@ export default function TierLensApp() {
             <button
               onClick={() => setActiveTab("optimizations")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "optimizations" ? "bg-blue-600/15 text-blue-400 border border-blue-500/30 font-semibold" : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                activeTab === "optimizations" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
             >
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -907,58 +907,58 @@ export default function TierLensApp() {
             <button
               onClick={() => setActiveTab("reports")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "reports" ? "bg-blue-600/15 text-blue-400 border border-blue-500/30 font-semibold" : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                activeTab === "reports" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
             >
-              <FileText className="w-4 h-4 text-slate-400" />
+              <FileText className="w-4 h-4 text-slate-500" />
               Audit Reports
             </button>
             <button
               onClick={() => setActiveTab("settings")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "settings" ? "bg-blue-600/15 text-blue-400 border border-blue-500/30 font-semibold" : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                activeTab === "settings" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
             >
-              <Settings className="w-4 h-4 text-slate-400" />
+              <Settings className="w-4 h-4 text-slate-500" />
               Settings
             </button>
             <button
               onClick={() => setActiveTab("docs")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "docs" ? "bg-blue-600/15 text-blue-400 border border-blue-500/30 font-semibold" : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                activeTab === "docs" ? "bg-blue-50 text-blue-600 border border-blue-200 font-semibold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
             >
-              <BookOpen className="w-4 h-4 text-slate-400" />
+              <BookOpen className="w-4 h-4 text-slate-500" />
               Documentation
             </button>
           </nav>
         </div>
 
         {/* Real Data Policy Indicator */}
-        <div className="p-3 border-t border-slate-800 bg-[#080C14]">
+        <div className="p-3 border-t border-slate-100 bg-slate-50">
           <div className="flex items-center gap-2 text-[10px] text-emerald-400 font-semibold mb-1">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>Real Data Policy: STRICT</span>
           </div>
-          <p className="text-[9px] text-slate-400 leading-tight">
+          <p className="text-[9px] text-slate-500 leading-tight">
             Zero fabricated results. Browser tests run via real Playwright/CDP; DB runs on Neon PostgreSQL.
           </p>
         </div>
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 flex flex-col overflow-hidden bg-[#0A0F1D]">
+      <main className="flex-1 flex flex-col overflow-hidden bg-slate-50">
         {/* TOP STATUS BAR */}
-        <header className="h-12 border-b border-slate-800 bg-[#0D1527] px-6 flex items-center justify-between shrink-0">
+        <header className="h-12 border-b border-slate-200 bg-white/90 backdrop-blur px-6 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 text-xs">
-            <span className="font-semibold text-slate-300">Environment:</span>
-            <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono text-[10px]">
+            <span className="font-semibold text-slate-700">Environment:</span>
+            <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-200 font-mono text-[10px]">
               Neon PostgreSQL Connected
             </span>
             <span className={`px-2 py-0.5 rounded font-mono text-[10px] ${
               systemHealth?.neo4j?.connected
-                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                : "bg-slate-800 text-slate-400 border border-slate-700"
+                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                : "bg-slate-100 text-slate-500 border border-slate-200"
             }`}>
               Neo4j: {systemHealth?.neo4j?.connected ? "Online" : "Offline (Relational Fallback Active)"}
             </span>
@@ -967,7 +967,7 @@ export default function TierLensApp() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => { refreshHealth(); loadProfiles(); }}
-              className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800/60 hover:bg-slate-800 border border-slate-700 transition"
+              className="text-[11px] text-slate-500 hover:text-slate-900 flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 border border-slate-200 transition"
             >
               <RefreshCw className="w-3 h-3" /> Refresh Diagnostics
             </button>
@@ -981,7 +981,7 @@ export default function TierLensApp() {
               <AlertOctagon className="w-4 h-4 text-rose-400 shrink-0" />
               <span>{errorBanner}</span>
             </div>
-            <button onClick={() => setErrorBanner(null)} className="text-rose-400 hover:text-white">
+            <button onClick={() => setErrorBanner(null)} className="text-rose-400 hover:text-slate-900">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -995,14 +995,14 @@ export default function TierLensApp() {
           {/* ========================================================================= */}
           {activeTab === "overview" && (
             <div className="space-y-6">
-              <div className="p-6 rounded-xl bg-[#0D1527] border border-slate-800 shadow-sm">
+              <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                       <Layers className="w-5 h-5 text-blue-500" />
                       TierLens Configurable Device Performance Platform
                     </h2>
-                    <p className="text-xs text-slate-400 mt-1 max-w-3xl">
+                    <p className="text-xs text-slate-500 mt-1 max-w-3xl">
                       Define custom virtual device profiles with controlled CPU throttling, network latency/bandwidth,
                       viewport parameters, and analytical RAM/storage specifications. Test your website against multiple
                       configurations and measure real performance degradations side by side.
@@ -1020,42 +1020,42 @@ export default function TierLensApp() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
                   <div
                     onClick={() => setActiveTab("web_test")}
-                    className="p-4 rounded-lg bg-[#111A30] border border-slate-700/80 hover:border-blue-500/50 cursor-pointer transition group"
+                    className="p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-blue-500/50 cursor-pointer transition group"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <Globe className="w-5 h-5 text-blue-400" />
                       <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition" />
                     </div>
-                    <div className="font-semibold text-xs text-white">Execute Multi-Device Web Test</div>
-                    <p className="text-[11px] text-slate-400 mt-1">
+                    <div className="font-semibold text-xs text-slate-900">Execute Multi-Device Web Test</div>
+                    <p className="text-[11px] text-slate-500 mt-1">
                       Run automated Playwright tests with Chrome DevTools Protocol CPU & network conditions.
                     </p>
                   </div>
 
                   <div
                     onClick={() => setActiveTab("device_builder")}
-                    className="p-4 rounded-lg bg-[#111A30] border border-slate-700/80 hover:border-indigo-500/50 cursor-pointer transition group"
+                    className="p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-indigo-500/50 cursor-pointer transition group"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <Sliders className="w-5 h-5 text-indigo-400" />
                       <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition" />
                     </div>
-                    <div className="font-semibold text-xs text-white">Device Configuration Builder</div>
-                    <p className="text-[11px] text-slate-400 mt-1">
+                    <div className="font-semibold text-xs text-slate-900">Device Configuration Builder</div>
+                    <p className="text-[11px] text-slate-500 mt-1">
                       Customize RAM profiles, CPU throttling, storage parameters, and network presets.
                     </p>
                   </div>
 
                   <div
                     onClick={() => setActiveTab("compare")}
-                    className="p-4 rounded-lg bg-[#111A30] border border-slate-700/80 hover:border-emerald-500/50 cursor-pointer transition group"
+                    className="p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-emerald-500/50 cursor-pointer transition group"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <GitCompare className="w-5 h-5 text-emerald-400" />
                       <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 transition" />
                     </div>
-                    <div className="font-semibold text-xs text-white">Performance Comparison</div>
-                    <p className="text-[11px] text-slate-400 mt-1">
+                    <div className="font-semibold text-xs text-slate-900">Performance Comparison</div>
+                    <p className="text-[11px] text-slate-500 mt-1">
                       Side-by-side degradations, Core Web Vitals diff, best vs worst performing configuration.
                     </p>
                   </div>
@@ -1063,14 +1063,14 @@ export default function TierLensApp() {
               </div>
 
               {/* Saved Profiles Snapshot */}
-              <div className="p-6 rounded-xl bg-[#0D1527] border border-slate-800 shadow-sm">
+              <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                       <Cpu className="w-4 h-4 text-indigo-400" />
                       Configured Device Profiles ({savedProfiles.length})
                     </h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
+                    <p className="text-[11px] text-slate-500 mt-0.5">
                       Hardware & network specifications ready for testing.
                     </p>
                   </div>
@@ -1084,16 +1084,16 @@ export default function TierLensApp() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {savedProfiles.slice(0, 6).map((p) => (
-                    <div key={p.id} className="p-3.5 rounded-lg bg-[#111A30] border border-slate-700/60 space-y-2">
+                    <div key={p.id} className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs text-white truncate max-w-[180px]">{p.name}</span>
+                        <span className="font-bold text-xs text-slate-900 truncate max-w-[180px]">{p.name}</span>
                         <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono ${
-                          p.is_custom ? "bg-purple-500/20 text-purple-300 border border-purple-500/30" : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                          p.is_custom ? "bg-purple-500/20 text-purple-300 border border-purple-500/30" : "bg-blue-50 text-blue-600 border border-blue-200"
                         }`}>
                           {p.is_custom ? "CUSTOM" : "PRESET"}
                         </span>
                       </div>
-                      <div className="text-[11px] text-slate-400 space-y-0.5 font-mono">
+                      <div className="text-[11px] text-slate-500 space-y-0.5 font-mono">
                         <div>CPU: {p.cpu_cores} Cores • {p.cpu_throttle_rate}x Slowdown</div>
                         <div>RAM: {Math.round(p.ram_mb / 1024)} GB • Storage: {p.storage_capacity_gb} GB</div>
                         <div>Network: {p.network_profile} ({p.network_latency_ms}ms lat)</div>
@@ -1111,14 +1111,14 @@ export default function TierLensApp() {
           {activeTab === "device_builder" && (
             <div className="space-y-6">
               {/* Header Card */}
-              <div className="p-6 rounded-xl bg-[#0D1527] border border-slate-800 shadow-sm">
+              <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <h2 className="text-base font-bold text-white flex items-center gap-2">
+                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                       <Sliders className="w-5 h-5 text-indigo-400" />
                       Custom Device Configuration Builder
                     </h2>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-xs text-slate-500 mt-0.5">
                       Configure custom virtual hardware, CPU throttling, storage specifications, and network conditions.
                     </p>
                   </div>
@@ -1131,8 +1131,8 @@ export default function TierLensApp() {
                 </div>
 
                 {/* Quick Presets Picker */}
-                <div className="mt-5 pt-4 border-t border-slate-800">
-                  <span className="text-[11px] font-semibold text-slate-400 block mb-2">
+                <div className="mt-5 pt-4 border-t border-slate-200">
+                  <span className="text-[11px] font-semibold text-slate-500 block mb-2">
                     Quick Preset Templates (click to populate):
                   </span>
                   <div className="flex flex-wrap gap-2">
@@ -1144,7 +1144,7 @@ export default function TierLensApp() {
                         className={`px-2.5 py-1 rounded text-xs transition border ${
                           builderName === tpl.name
                             ? "bg-indigo-600 text-white border-indigo-500"
-                            : "bg-[#111A30] text-slate-300 border-slate-700 hover:border-slate-500"
+                            : "bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-500"
                         }`}
                       >
                         {tpl.device_type}
@@ -1158,22 +1158,22 @@ export default function TierLensApp() {
                   {/* Row 1: Profile Identification */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">Device Profile Name</label>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Device Profile Name</label>
                       <input
                         type="text"
                         value={builderName}
                         onChange={e => setBuilderName(e.target.value)}
                         required
                         placeholder="e.g. Redmi 9A Constrained (Entry Android)"
-                        className="w-full bg-[#111A30] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
+                        className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 shadow-sm focus:outline-none focus:border-indigo-500 font-mono"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">Device Type</label>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Device Type</label>
                       <select
                         value={builderDeviceType}
                         onChange={e => setBuilderDeviceType(e.target.value)}
-                        className="w-full bg-[#111A30] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                        className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 shadow-sm focus:outline-none focus:border-indigo-500"
                       >
                         <option value="Entry-level Android">Entry-level Android</option>
                         <option value="Budget Android">Budget Android</option>
@@ -1188,13 +1188,13 @@ export default function TierLensApp() {
                   </div>
 
                   {/* Row 2: RAM Configuration */}
-                  <div className="p-4 rounded-lg bg-[#111A30] border border-slate-700 space-y-3">
+                  <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Gauge className="w-4 h-4 text-blue-400" />
-                        <span className="text-xs font-bold text-white">RAM Configuration</span>
+                        <span className="text-xs font-bold text-slate-900">RAM Configuration</span>
                       </div>
-                      <span className="text-[10px] text-slate-400 font-mono">
+                      <span className="text-[10px] text-slate-500 font-mono">
                         Selected: {Math.round(builderRamMb / 1024)} GB ({builderRamMb} MB)
                       </span>
                     </div>
@@ -1208,7 +1208,7 @@ export default function TierLensApp() {
                           className={`px-3 py-1.5 rounded text-xs font-mono transition border ${
                             builderRamMb === opt.mb && !isCustomRam
                               ? "bg-blue-600 text-white border-blue-500 font-semibold"
-                              : "bg-[#0A0F1D] text-slate-300 border-slate-700 hover:border-slate-500"
+                              : "bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-500"
                           }`}
                         >
                           {opt.label}
@@ -1220,7 +1220,7 @@ export default function TierLensApp() {
                         className={`px-3 py-1.5 rounded text-xs font-mono transition border ${
                           isCustomRam
                             ? "bg-blue-600 text-white border-blue-500 font-semibold"
-                            : "bg-[#0A0F1D] text-slate-300 border-slate-700 hover:border-slate-500"
+                            : "bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-500"
                         }`}
                       >
                         Custom RAM
@@ -1240,12 +1240,12 @@ export default function TierLensApp() {
                             if (parsed > 0) setBuilderRamMb(parsed * 1024);
                           }}
                           placeholder="Enter RAM in GB (e.g. 5)"
-                          className="w-48 bg-[#0A0F1D] border border-slate-700 rounded px-2.5 py-1 text-xs text-white font-mono"
+                          className="w-48 bg-white border border-slate-300 rounded px-2.5 py-1 text-xs text-slate-900 shadow-sm font-mono"
                         />
-                        <span className="text-xs text-slate-400">GB</span>
+                        <span className="text-xs text-slate-500">GB</span>
                       </div>
                     )}
-                    <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                    <div className="text-[10px] text-slate-500 flex items-center gap-1.5">
                       <Info className="w-3.5 h-3.5 text-blue-400 shrink-0" />
                       <span>
                         Technical Transparency: RAM allocation is recorded as target device specification metadata for correlation.
@@ -1255,24 +1255,24 @@ export default function TierLensApp() {
                   </div>
 
                   {/* Row 3: CPU Configuration */}
-                  <div className="p-4 rounded-lg bg-[#111A30] border border-slate-700 space-y-3">
+                  <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Cpu className="w-4 h-4 text-emerald-400" />
-                        <span className="text-xs font-bold text-white">CPU Specifications & Throttling</span>
+                        <span className="text-xs font-bold text-slate-900">CPU Specifications & Throttling</span>
                       </div>
-                      <span className="text-[10px] text-slate-400 font-mono">
+                      <span className="text-[10px] text-slate-500 font-mono">
                         Throttle: {builderCpuThrottle}x Slowdown • {builderCpuCores} Physical Profile Cores
                       </span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-[11px] text-slate-300 mb-1">CPU Core Count Profile</label>
+                        <label className="block text-[11px] text-slate-700 mb-1">CPU Core Count Profile</label>
                         <select
                           value={builderCpuCores}
                           onChange={e => setBuilderCpuCores(parseInt(e.target.value, 10))}
-                          className="w-full bg-[#0A0F1D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white font-mono"
+                          className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 shadow-sm font-mono"
                         >
                           <option value={2}>2 Cores (Low-end entry)</option>
                           <option value={4}>4 Cores (Budget standard)</option>
@@ -1284,7 +1284,7 @@ export default function TierLensApp() {
                       </div>
 
                       <div>
-                        <label className="block text-[11px] text-slate-300 mb-1">
+                        <label className="block text-[11px] text-slate-700 mb-1">
                           CPU Slowdown Multiplier (CDP Throttling Rate: {builderCpuThrottle}x)
                         </label>
                         <input
@@ -1305,18 +1305,18 @@ export default function TierLensApp() {
                       </div>
 
                       <div>
-                        <label className="block text-[11px] text-slate-300 mb-1">Performance Category</label>
+                        <label className="block text-[11px] text-slate-700 mb-1">Performance Category</label>
                         <input
                           type="text"
                           value={builderCpuCategory}
                           onChange={e => setBuilderCpuCategory(e.target.value)}
                           placeholder="e.g. 4-core budget"
-                          className="w-full bg-[#0A0F1D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white font-mono"
+                          className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 shadow-sm font-mono"
                         />
                       </div>
                     </div>
 
-                    <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                    <div className="text-[10px] text-slate-500 flex items-center gap-1.5">
                       <Info className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                       <span>
                         Real Emulation: CPU throttling factor ({builderCpuThrottle}x) is directly enforced via Chrome DevTools Protocol
@@ -1326,24 +1326,24 @@ export default function TierLensApp() {
                   </div>
 
                   {/* Row 4: Storage Configuration */}
-                  <div className="p-4 rounded-lg bg-[#111A30] border border-slate-700 space-y-3">
+                  <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <HardDrive className="w-4 h-4 text-purple-400" />
-                        <span className="text-xs font-bold text-white">Storage Profile & Capacity</span>
+                        <span className="text-xs font-bold text-slate-900">Storage Profile & Capacity</span>
                       </div>
-                      <span className="text-[10px] text-slate-400 font-mono">
+                      <span className="text-[10px] text-slate-500 font-mono">
                         {builderStorageProfile} ({builderStorageCapacityGb}GB total, {builderStorageAvailableGb}GB free)
                       </span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-[11px] text-slate-300 mb-1">Storage Profile Type</label>
+                        <label className="block text-[11px] text-slate-700 mb-1">Storage Profile Type</label>
                         <select
                           value={builderStorageProfile}
                           onChange={e => setBuilderStorageProfile(e.target.value)}
-                          className="w-full bg-[#0A0F1D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white"
+                          className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 shadow-sm"
                         >
                           {STORAGE_PROFILES.map(sp => (
                             <option key={sp} value={sp}>{sp}</option>
@@ -1352,31 +1352,31 @@ export default function TierLensApp() {
                       </div>
 
                       <div>
-                        <label className="block text-[11px] text-slate-300 mb-1">Total Storage Capacity (GB)</label>
+                        <label className="block text-[11px] text-slate-700 mb-1">Total Storage Capacity (GB)</label>
                         <input
                           type="number"
                           min="8"
                           max="4096"
                           value={builderStorageCapacityGb}
                           onChange={e => setBuilderStorageCapacityGb(parseInt(e.target.value, 10))}
-                          className="w-full bg-[#0A0F1D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white font-mono"
+                          className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 shadow-sm font-mono"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[11px] text-slate-300 mb-1">Available Free Space (GB)</label>
+                        <label className="block text-[11px] text-slate-700 mb-1">Available Free Space (GB)</label>
                         <input
                           type="number"
                           min="1"
                           max={builderStorageCapacityGb}
                           value={builderStorageAvailableGb}
                           onChange={e => setBuilderStorageAvailableGb(parseInt(e.target.value, 10))}
-                          className="w-full bg-[#0A0F1D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white font-mono"
+                          className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 shadow-sm font-mono"
                         />
                       </div>
                     </div>
 
-                    <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                    <div className="text-[10px] text-slate-500 flex items-center gap-1.5">
                       <Info className="w-3.5 h-3.5 text-purple-400 shrink-0" />
                       <span>
                         Technical Transparency: Browser automation cannot modify the host machine's physical storage hardware or emulate
@@ -1386,13 +1386,13 @@ export default function TierLensApp() {
                   </div>
 
                   {/* Row 5: Network Configuration */}
-                  <div className="p-4 rounded-lg bg-[#111A30] border border-slate-700 space-y-3">
+                  <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Wifi className="w-4 h-4 text-amber-400" />
-                        <span className="text-xs font-bold text-white">Network Conditions & Latency</span>
+                        <span className="text-xs font-bold text-slate-900">Network Conditions & Latency</span>
                       </div>
-                      <span className="text-[10px] text-slate-400 font-mono">
+                      <span className="text-[10px] text-slate-500 font-mono">
                         {builderNetworkProfile} • Latency: {builderNetworkLatencyMs}ms • Down: {builderNetworkDownKbps} kbps
                       </span>
                     </div>
@@ -1412,7 +1412,7 @@ export default function TierLensApp() {
                           className={`px-2.5 py-1 rounded text-xs transition border ${
                             builderNetworkProfile === np.name
                               ? "bg-amber-600 text-white border-amber-500 font-semibold"
-                              : "bg-[#0A0F1D] text-slate-300 border-slate-700 hover:border-slate-500"
+                              : "bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-500"
                           }`}
                         >
                           {np.name}
@@ -1422,39 +1422,39 @@ export default function TierLensApp() {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
                       <div>
-                        <label className="block text-[11px] text-slate-300 mb-1">Download Bandwidth (kbps)</label>
+                        <label className="block text-[11px] text-slate-700 mb-1">Download Bandwidth (kbps)</label>
                         <input
                           type="number"
                           min="0"
                           value={builderNetworkDownKbps}
                           onChange={e => setBuilderNetworkDownKbps(parseFloat(e.target.value))}
-                          className="w-full bg-[#0A0F1D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white font-mono"
+                          className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 shadow-sm font-mono"
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] text-slate-300 mb-1">Upload Bandwidth (kbps)</label>
+                        <label className="block text-[11px] text-slate-700 mb-1">Upload Bandwidth (kbps)</label>
                         <input
                           type="number"
                           min="0"
                           value={builderNetworkUpKbps}
                           onChange={e => setBuilderNetworkUpKbps(parseFloat(e.target.value))}
-                          className="w-full bg-[#0A0F1D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white font-mono"
+                          className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 shadow-sm font-mono"
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] text-slate-300 mb-1">Network Latency (RTT ms)</label>
+                        <label className="block text-[11px] text-slate-700 mb-1">Network Latency (RTT ms)</label>
                         <input
                           type="number"
                           min="0"
                           max="5000"
                           value={builderNetworkLatencyMs}
                           onChange={e => setBuilderNetworkLatencyMs(parseInt(e.target.value, 10))}
-                          className="w-full bg-[#0A0F1D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white font-mono"
+                          className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 shadow-sm font-mono"
                         />
                       </div>
                     </div>
 
-                    <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                    <div className="text-[10px] text-slate-500 flex items-center gap-1.5">
                       <Info className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                       <span>
                         Real Emulation: Network throttling and latency are directly simulated in Chromium via Chrome DevTools Protocol
@@ -1464,37 +1464,37 @@ export default function TierLensApp() {
                   </div>
 
                   {/* Row 6: Viewport & Emulation Details */}
-                  <div className="p-4 rounded-lg bg-[#111A30] border border-slate-700 space-y-3">
+                  <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-3">
                     <div className="flex items-center gap-2">
                       <Monitor className="w-4 h-4 text-cyan-400" />
-                      <span className="text-xs font-bold text-white">Viewport & Browser Emulation</span>
+                      <span className="text-xs font-bold text-slate-900">Viewport & Browser Emulation</span>
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       <div>
-                        <label className="block text-[11px] text-slate-300 mb-1">Viewport Width (px)</label>
+                        <label className="block text-[11px] text-slate-700 mb-1">Viewport Width (px)</label>
                         <input
                           type="number"
                           min="240"
                           max="3840"
                           value={builderViewportWidth}
                           onChange={e => setBuilderViewportWidth(parseInt(e.target.value, 10))}
-                          className="w-full bg-[#0A0F1D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white font-mono"
+                          className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 shadow-sm font-mono"
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] text-slate-300 mb-1">Viewport Height (px)</label>
+                        <label className="block text-[11px] text-slate-700 mb-1">Viewport Height (px)</label>
                         <input
                           type="number"
                           min="240"
                           max="2160"
                           value={builderViewportHeight}
                           onChange={e => setBuilderViewportHeight(parseInt(e.target.value, 10))}
-                          className="w-full bg-[#0A0F1D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white font-mono"
+                          className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 shadow-sm font-mono"
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] text-slate-300 mb-1">Pixel Scale Factor</label>
+                        <label className="block text-[11px] text-slate-700 mb-1">Pixel Scale Factor</label>
                         <input
                           type="number"
                           step="0.25"
@@ -1502,11 +1502,11 @@ export default function TierLensApp() {
                           max="4"
                           value={builderScaleFactor}
                           onChange={e => setBuilderScaleFactor(parseFloat(e.target.value))}
-                          className="w-full bg-[#0A0F1D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white font-mono"
+                          className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 shadow-sm font-mono"
                         />
                       </div>
                       <div className="flex items-center gap-4 pt-4">
-                        <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
+                        <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
                           <input
                             type="checkbox"
                             checked={builderIsMobile}
@@ -1515,7 +1515,7 @@ export default function TierLensApp() {
                           />
                           Mobile
                         </label>
-                        <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
+                        <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
                           <input
                             type="checkbox"
                             checked={builderHasTouch}
@@ -1528,13 +1528,13 @@ export default function TierLensApp() {
                     </div>
 
                     <div>
-                      <label className="block text-[11px] text-slate-300 mb-1">Custom User-Agent (optional)</label>
+                      <label className="block text-[11px] text-slate-700 mb-1">Custom User-Agent (optional)</label>
                       <input
                         type="text"
                         value={builderUserAgent}
                         onChange={e => setBuilderUserAgent(e.target.value)}
                         placeholder="Leave blank for automatic user agent"
-                        className="w-full bg-[#0A0F1D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-300 font-mono"
+                        className="w-full bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5 text-xs text-slate-700 font-mono"
                       />
                     </div>
                   </div>
@@ -1544,7 +1544,7 @@ export default function TierLensApp() {
                     <button
                       type="button"
                       onClick={() => handleApplyPresetTemplate(PRESET_TEMPLATES[0])}
-                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition"
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-700 text-slate-700 text-xs rounded-lg transition"
                     >
                       Reset Form to Default Preset
                     </button>
@@ -1564,14 +1564,14 @@ export default function TierLensApp() {
               </div>
 
               {/* Saved Configurations Library */}
-              <div className="p-6 rounded-xl bg-[#0D1527] border border-slate-800 shadow-sm space-y-4">
+              <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                       <Database className="w-4 h-4 text-blue-400" />
                       All Device Configurations ({savedProfiles.length})
                     </h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
+                    <p className="text-[11px] text-slate-500 mt-0.5">
                       System presets and custom workspace profiles stored in Neon PostgreSQL.
                     </p>
                   </div>
@@ -1584,33 +1584,33 @@ export default function TierLensApp() {
                       className={`p-4 rounded-xl border transition ${
                         builderId === p.id
                           ? "bg-[#131F3A] border-indigo-500"
-                          : "bg-[#111A30] border-slate-700/80 hover:border-slate-600"
+                          : "bg-slate-50 border-slate-200 hover:border-slate-600"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-xs text-white">{p.name}</span>
+                            <span className="font-bold text-xs text-slate-900">{p.name}</span>
                             <span className={`text-[9px] px-1.5 py-0.2 rounded font-mono ${
-                              p.is_custom ? "bg-purple-500/20 text-purple-300 border border-purple-500/30" : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                              p.is_custom ? "bg-purple-500/20 text-purple-300 border border-purple-500/30" : "bg-blue-50 text-blue-600 border border-blue-200"
                             }`}>
                               {p.is_custom ? "CUSTOM" : "PRESET"}
                             </span>
                           </div>
-                          <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+                          <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
                             {p.device_type}
                           </span>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-800/80 text-[10px] font-mono text-slate-300">
+                      <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-200 text-[10px] font-mono text-slate-700">
                         <div>RAM: <span className="text-white font-semibold">{Math.round(p.ram_mb / 1024)} GB</span></div>
                         <div>CPU: <span className="text-white font-semibold">{p.cpu_cores} Cores ({p.cpu_throttle_rate}x)</span></div>
                         <div>Net: <span className="text-white font-semibold">{p.network_profile}</span></div>
                         <div>Storage: <span className="text-white font-semibold">{p.storage_capacity_gb} GB</span></div>
                       </div>
 
-                      <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-800/80">
+                      <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-200">
                         <button
                           type="button"
                           onClick={() => {
@@ -1628,7 +1628,7 @@ export default function TierLensApp() {
                             type="button"
                             onClick={() => handleLoadProfileForEdit(p)}
                             title="Edit / Load into builder"
-                            className="p-1 text-slate-400 hover:text-white"
+                            className="p-1 text-slate-500 hover:text-slate-900"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
@@ -1636,7 +1636,7 @@ export default function TierLensApp() {
                             type="button"
                             onClick={() => handleDuplicateProfile(p.id)}
                             title="Duplicate profile"
-                            className="p-1 text-slate-400 hover:text-white"
+                            className="p-1 text-slate-500 hover:text-slate-900"
                           >
                             <Copy className="w-3.5 h-3.5" />
                           </button>
@@ -1664,14 +1664,14 @@ export default function TierLensApp() {
           {/* ========================================================================= */}
           {activeTab === "web_test" && (
             <div className="space-y-6">
-              <div className="p-6 rounded-xl bg-[#0D1527] border border-slate-800 shadow-sm">
+              <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-base font-bold text-white flex items-center gap-2">
+                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                       <Globe className="w-5 h-5 text-blue-400" />
                       Website Performance Testing Engine
                     </h2>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-xs text-slate-500 mt-0.5">
                       Executes isolated Playwright browser sessions with real Chrome DevTools Protocol network & CPU throttling.
                     </p>
                   </div>
@@ -1686,14 +1686,14 @@ export default function TierLensApp() {
 
                 <form onSubmit={handleExecuteWebTest} className="space-y-5">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">Target Application URL</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Target Application URL</label>
                     <input
                       type="url"
                       value={testUrl}
                       onChange={e => setTestUrl(e.target.value)}
                       placeholder="https://your-target-domain.com"
                       required
-                      className="w-full bg-[#111A30] border border-slate-700 rounded-lg px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
+                      className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-xs text-slate-900 shadow-sm focus:outline-none focus:border-blue-500 font-mono"
                     />
                     <span className="text-[10px] text-slate-500 mt-1 block">
                       SSRF Safety: Private IP subnets (10.0.0.0/8, 192.168.0.0/16), localhost, and metadata endpoints are strictly blocked.
@@ -1703,7 +1703,7 @@ export default function TierLensApp() {
                   {/* Mode Selector */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label className="text-xs font-semibold text-slate-300">Device Configuration Selection Mode</label>
+                      <label className="text-xs font-semibold text-slate-700">Device Configuration Selection Mode</label>
                       <div className="flex items-center gap-2 text-xs">
                         <button
                           type="button"
@@ -1711,7 +1711,7 @@ export default function TierLensApp() {
                           className={`px-2.5 py-1 rounded text-xs transition border ${
                             testSelectionMode === "preset"
                               ? "bg-blue-600 text-white border-blue-500 font-semibold"
-                              : "bg-[#111A30] text-slate-400 border-slate-700 hover:text-white"
+                              : "bg-slate-50 text-slate-500 border-slate-200 hover:text-slate-900"
                           }`}
                         >
                           Legacy Presets
@@ -1722,7 +1722,7 @@ export default function TierLensApp() {
                           className={`px-2.5 py-1 rounded text-xs transition border ${
                             testSelectionMode === "multi_select"
                               ? "bg-blue-600 text-white border-blue-500 font-semibold"
-                              : "bg-[#111A30] text-slate-400 border-slate-700 hover:text-white"
+                              : "bg-slate-50 text-slate-500 border-slate-200 hover:text-slate-900"
                           }`}
                         >
                           Multi-Device Suite ({selectedProfileIds.length} Selected)
@@ -1737,39 +1737,39 @@ export default function TierLensApp() {
                           className={`p-3.5 rounded-lg border cursor-pointer transition ${
                             selectedTier === "BOTH"
                               ? "bg-blue-500/15 border-blue-500 text-white font-semibold"
-                              : "bg-[#111A30] border-slate-700 text-slate-400 hover:border-slate-600"
+                              : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-600"
                           }`}
                         >
-                          <div className="text-xs text-white">Dual Comparison (Both)</div>
-                          <div className="text-[10px] text-slate-400 mt-0.5">Good Budget (4x CPU) vs Entry-Level (8x CPU)</div>
+                          <div className="text-xs text-slate-800">Dual Comparison (Both)</div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">Good Budget (4x CPU) vs Entry-Level (8x CPU)</div>
                         </div>
                         <div
                           onClick={() => setSelectedTier("GOOD_BUDGET")}
                           className={`p-3.5 rounded-lg border cursor-pointer transition ${
                             selectedTier === "GOOD_BUDGET"
                               ? "bg-blue-500/15 border-blue-500 text-white font-semibold"
-                              : "bg-[#111A30] border-slate-700 text-slate-400 hover:border-slate-600"
+                              : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-600"
                           }`}
                         >
-                          <div className="text-xs text-white">Good Budget Only</div>
-                          <div className="text-[10px] text-slate-400 mt-0.5">4x CPU Throttling, Fast 3G network</div>
+                          <div className="text-xs text-slate-800">Good Budget Only</div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">4x CPU Throttling, Fast 3G network</div>
                         </div>
                         <div
                           onClick={() => setSelectedTier("ENTRY_LEVEL")}
                           className={`p-3.5 rounded-lg border cursor-pointer transition ${
                             selectedTier === "ENTRY_LEVEL"
                               ? "bg-blue-500/15 border-blue-500 text-white font-semibold"
-                              : "bg-[#111A30] border-slate-700 text-slate-400 hover:border-slate-600"
+                              : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-600"
                           }`}
                         >
-                          <div className="text-xs text-white">Entry-Level Only</div>
-                          <div className="text-[10px] text-slate-400 mt-0.5">8x CPU Throttling, Slow 3G network</div>
+                          <div className="text-xs text-slate-800">Entry-Level Only</div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">8x CPU Throttling, Slow 3G network</div>
                         </div>
                       </div>
                     ) : (
-                      <div className="p-4 rounded-xl bg-[#111A30] border border-slate-700 space-y-3">
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-300 font-semibold">Select 2 or more devices for multi-configuration comparison:</span>
+                          <span className="text-slate-700 font-semibold">Select 2 or more devices for multi-configuration comparison:</span>
                           <div className="flex gap-2">
                             <button
                               type="button"
@@ -1781,7 +1781,7 @@ export default function TierLensApp() {
                             <button
                               type="button"
                               onClick={() => setSelectedProfileIds([])}
-                              className="text-[10px] text-slate-400 hover:underline"
+                              className="text-[10px] text-slate-500 hover:underline"
                             >
                               Clear
                             </button>
@@ -1798,12 +1798,12 @@ export default function TierLensApp() {
                                 className={`p-2.5 rounded-lg border cursor-pointer transition flex items-center justify-between ${
                                   isChecked
                                     ? "bg-blue-600/20 border-blue-500 text-white"
-                                    : "bg-[#0A0F1D] border-slate-700/80 text-slate-400 hover:border-slate-600"
+                                    : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-600"
                                 }`}
                               >
                                 <div className="truncate pr-2">
-                                  <div className="text-xs font-semibold text-white truncate">{p.name}</div>
-                                  <div className="text-[10px] text-slate-400 font-mono truncate">
+                                  <div className="text-xs font-semibold text-slate-900 truncate">{p.name}</div>
+                                  <div className="text-[10px] text-slate-500 font-mono truncate">
                                     {p.cpu_throttle_rate}x CPU • {p.network_profile}
                                   </div>
                                 </div>
@@ -1832,11 +1832,11 @@ export default function TierLensApp() {
 
                 {/* Real-time Background Job Progress */}
                 {activeJob && (
-                  <div className="mt-6 p-4 rounded-xl bg-[#111A30] border border-blue-500/40">
+                  <div className="mt-6 p-4 rounded-xl bg-slate-50 border border-blue-500/40">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-ping" />
-                        <span className="text-xs font-bold text-white font-mono">Job ID: {activeJob.job_id}</span>
+                        <span className="text-xs font-bold text-slate-900 font-mono">Job ID: {activeJob.job_id}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono uppercase ${
@@ -1857,7 +1857,7 @@ export default function TierLensApp() {
                       </div>
                     </div>
 
-                    <div className="text-xs text-slate-300 space-y-1">
+                    <div className="text-xs text-slate-700 space-y-1">
                       <div><span className="text-slate-500 font-semibold">Stage:</span> {activeJob.stage}</div>
                       <div><span className="text-slate-500 font-semibold">Progress:</span> {activeJob.progress_message}</div>
                     </div>
@@ -1871,7 +1871,7 @@ export default function TierLensApp() {
               {(comparisonData || testResult?.single_run_data) && (
                 <div className="space-y-6">
                   {/* Results Header */}
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-xl bg-[#0D1527] border border-slate-800 text-white shadow-sm">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-xl bg-white border border-slate-200 text-white shadow-sm">
                     <div>
                       <div className="flex items-center gap-2">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono uppercase ${
@@ -1879,11 +1879,11 @@ export default function TierLensApp() {
                         }`}>
                           {testResult?.status?.replace(/_/g, " ") || "COMPLETED"}
                         </span>
-                        <span className="text-xs text-slate-400 font-mono">
+                        <span className="text-xs text-slate-500 font-mono">
                           Mode: {testResult?.mode || (comparisonData ? "MULTI_COMPARISON" : "SINGLE_RUN")}
                         </span>
                       </div>
-                      <h3 className="text-base font-bold text-white mt-1">
+                      <h3 className="text-base font-bold text-slate-900 mt-1">
                         Results for Target: <span className="text-blue-400 font-mono">{testResult?.target_url || testUrl}</span>
                       </h3>
                     </div>
@@ -1892,11 +1892,11 @@ export default function TierLensApp() {
                       <div className="flex items-center gap-3 text-xs font-mono">
                         <div className="p-2 rounded bg-emerald-500/10 border border-emerald-500/30">
                           <span className="text-[10px] text-emerald-400 block font-semibold">BEST PERFORMER</span>
-                          <span className="font-bold text-white">{comparisonData.best_configuration.name}</span>
+                          <span className="font-bold text-slate-900">{comparisonData.best_configuration.name}</span>
                         </div>
                         <div className="p-2 rounded bg-rose-500/10 border border-rose-500/30">
                           <span className="text-[10px] text-rose-400 block font-semibold">HIGHEST DEGRADATION</span>
-                          <span className="font-bold text-white">{comparisonData.worst_configuration.name}</span>
+                          <span className="font-bold text-slate-900">{comparisonData.worst_configuration.name}</span>
                         </div>
                       </div>
                     )}
@@ -1904,14 +1904,14 @@ export default function TierLensApp() {
 
                   {/* Multi-Device Comparison Visualizer */}
                   {comparisonChartData.length > 0 && (
-                    <div className="p-6 bg-[#0D1527] border border-slate-800 rounded-xl shadow-sm space-y-4">
+                    <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                             <GitCompare className="w-4 h-4 text-blue-400" />
                             Multi-Device Performance Degradation Differential (Core Web Vitals)
                           </h4>
-                          <p className="text-[11px] text-slate-400 mt-0.5">
+                          <p className="text-[11px] text-slate-500 mt-0.5">
                             Real measured browser execution across configured device profiles.
                           </p>
                         </div>
@@ -1920,11 +1920,11 @@ export default function TierLensApp() {
                       <div className="h-72 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={comparisonChartData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                             <XAxis dataKey="name" stroke="#64748B" fontSize={11} />
                             <YAxis stroke="#64748B" fontSize={11} />
                             <Tooltip
-                              contentStyle={{ backgroundColor: "#0F172A", borderColor: "#334155", fontSize: "11px", borderRadius: "8px" }}
+                              contentStyle={{ backgroundColor: "#FFFFFF", borderColor: "#E2E8F0", color: "#0F172A", fontSize: "11px", borderRadius: "8px" }}
                             />
                             <Legend wrapperStyle={{ fontSize: "11px" }} />
                             {profileKeysInChart.map((pName, idx) => (
@@ -1943,18 +1943,18 @@ export default function TierLensApp() {
 
                   {/* Multi-Device Metrics Table */}
                   {comparisonData?.multi_metrics_diff && (
-                    <div className="p-6 bg-[#0D1527] border border-slate-800 rounded-xl shadow-sm overflow-hidden">
-                      <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                    <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                      <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
                         <Sliders className="w-4 h-4 text-blue-400" /> Metric Breakdown & Degradation Percentages
                       </h4>
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs">
                           <thead>
-                            <tr className="border-b border-slate-800 text-slate-400 font-semibold bg-[#111A30]/50">
+                            <tr className="border-b border-slate-200 text-slate-500 font-semibold bg-slate-50">
                               <th className="py-2.5 px-3">Metric</th>
                               <th className="py-2.5 px-3">Unit</th>
                               {profileKeysInChart.map(pName => (
-                                <th key={pName} className="py-2.5 px-3 text-white">{pName}</th>
+                                <th key={pName} className="py-2.5 px-3 text-slate-900">{pName}</th>
                               ))}
                               <th className="py-2.5 px-3 text-amber-400">Degradation vs Baseline</th>
                             </tr>
@@ -1962,9 +1962,9 @@ export default function TierLensApp() {
                           <tbody className="divide-y divide-slate-800/80 font-mono">
                             {Object.entries(comparisonData.multi_metrics_diff).map(([mName, mData]: [string, any]) => {
                               return (
-                                <tr key={mName} className="hover:bg-slate-800/30">
-                                  <td className="py-3 px-3 font-bold text-white">{mName}</td>
-                                  <td className="py-3 px-3 text-slate-400">{mData.unit}</td>
+                                <tr key={mName} className="hover:bg-slate-100/30">
+                                  <td className="py-3 px-3 font-bold text-slate-900">{mName}</td>
+                                  <td className="py-3 px-3 text-slate-500">{mData.unit}</td>
                                   {profileKeysInChart.map(pName => (
                                     <td key={pName} className="py-3 px-3 text-slate-200">
                                       {mData.values?.[pName] !== undefined && mData.values?.[pName] !== null
@@ -1998,20 +1998,20 @@ export default function TierLensApp() {
 
                   {/* Device Configuration Summary Cards */}
                   {comparisonData?.configurations && (
-                    <div className="p-6 bg-[#0D1527] border border-slate-800 rounded-xl shadow-sm">
-                      <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                    <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm">
+                      <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
                         <Smartphone className="w-4 h-4 text-indigo-400" /> Tested Device Specifications & Emulation Profile
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {comparisonData.configurations.map((cfg: any, idx: number) => (
-                          <div key={idx} className="p-3.5 rounded-lg bg-[#111A30] border border-slate-700/80 space-y-1.5 font-mono text-xs">
+                          <div key={idx} className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 space-y-1.5 font-mono text-xs">
                             <div className="flex items-center justify-between">
-                              <span className="font-bold text-white">{cfg.name}</span>
-                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                              <span className="font-bold text-slate-900">{cfg.name}</span>
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-600 border border-blue-200">
                                 {cfg.status}
                               </span>
                             </div>
-                            <div className="text-[11px] text-slate-400 space-y-0.5 pt-1">
+                            <div className="text-[11px] text-slate-500 space-y-0.5 pt-1">
                               <div>CPU: {cfg.cpu_cores} Cores • {cfg.cpu_throttle_rate}x CDP Slowdown</div>
                               <div>RAM: {Math.round(cfg.ram_mb / 1024)} GB • Storage: {cfg.storage_profile}</div>
                               <div>Network: {cfg.network_profile}</div>
@@ -2024,12 +2024,12 @@ export default function TierLensApp() {
                   )}
 
                   {/* Limitation Notice Card */}
-                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-400 space-y-1">
-                    <div className="flex items-center gap-2 font-semibold text-slate-300">
+                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-200 text-xs text-slate-500 space-y-1">
+                    <div className="flex items-center gap-2 font-semibold text-slate-700">
                       <Info className="w-4 h-4 text-blue-400 shrink-0" />
                       <span>Technical Emulation Disclosure:</span>
                     </div>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-slate-500">
                       CPU throttling factor and Network conditions are enforced in real-time via Chrome DevTools Protocol.
                       RAM capacity and Storage performance parameters are maintained as target hardware specifications for correlation.
                       Browser tests execute within isolated headless Chromium contexts without physical hardware virtualization.
@@ -2038,16 +2038,16 @@ export default function TierLensApp() {
 
                   {/* Root Cause Analysis & Recommendations */}
                   {recommendations.length > 0 && (
-                    <div className="p-6 bg-[#0D1527] border border-slate-800 rounded-xl shadow-sm space-y-4">
-                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm space-y-4">
+                      <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                         <Brain className="w-4 h-4 text-pink-400" />
                         Evidence-Grounded Root Cause Findings ({recommendations.length})
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {recommendations.map((rec, i) => (
-                          <div key={i} className="p-4 rounded-xl bg-[#111A30] border border-slate-700/80 space-y-2">
+                          <div key={i} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                             <div className="flex items-start justify-between gap-2">
-                              <div className="font-bold text-xs text-white">{rec.title}</div>
+                              <div className="font-bold text-xs text-slate-900">{rec.title}</div>
                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded font-mono ${
                                 rec.impact === "HIGH" ? "bg-rose-500/20 text-rose-300 border border-rose-500/30" : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                               }`}>
@@ -2062,16 +2062,16 @@ export default function TierLensApp() {
                             )}
 
                             {rec.confidence_level && (
-                              <div className="text-[10px] text-slate-400 font-mono">
+                              <div className="text-[10px] text-slate-500 font-mono">
                                 Confidence Level: <span className="text-emerald-400">{rec.confidence_level}</span>
                               </div>
                             )}
 
-                            <p className="text-xs text-slate-300">{rec.probable_cause}</p>
+                            <p className="text-xs text-slate-700">{rec.probable_cause}</p>
 
-                            <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400">
-                              <span className="font-semibold text-slate-300 block mb-0.5">Recommended Remediation:</span>
-                              <pre className="whitespace-pre-wrap font-sans text-slate-300">{rec.remediation || rec.recommended_fix}</pre>
+                            <div className="pt-2 border-t border-slate-200 text-[11px] text-slate-500">
+                              <span className="font-semibold text-slate-700 block mb-0.5">Recommended Remediation:</span>
+                              <pre className="whitespace-pre-wrap font-sans text-slate-700">{rec.remediation || rec.recommended_fix}</pre>
                             </div>
                           </div>
                         ))}
@@ -2088,26 +2088,26 @@ export default function TierLensApp() {
           {/* ========================================================================= */}
           {activeTab === "compare" && (
             <div className="space-y-6">
-              <div className="p-6 rounded-xl bg-[#0D1527] border border-slate-800 shadow-sm">
+              <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-base font-bold text-white flex items-center gap-2">
+                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                       <GitCompare className="w-5 h-5 text-blue-400" />
                       Side-by-Side Device Comparison Dashboard
                     </h2>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-xs text-slate-500 mt-0.5">
                       Differential performance analysis across hardware configurations.
                     </p>
                   </div>
                   {comparisonData?.comparison_group_id && (
-                    <span className="text-[10px] font-mono text-slate-400 bg-slate-800 px-2.5 py-1 rounded border border-slate-700">
+                    <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
                       Group ID: {comparisonData.comparison_group_id.slice(0, 12)}
                     </span>
                   )}
                 </div>
 
                 {!comparisonData ? (
-                  <div className="p-12 text-center text-slate-400 text-xs space-y-3">
+                  <div className="p-12 text-center text-slate-500 text-xs space-y-3">
                     <p>No comparison execution loaded yet.</p>
                     <button
                       onClick={() => setActiveTab("web_test")}
@@ -2119,16 +2119,16 @@ export default function TierLensApp() {
                 ) : (
                   <div className="space-y-6">
                     {/* Comparative Bar Chart */}
-                    <div className="p-5 bg-[#111A30] border border-slate-700 rounded-xl space-y-3">
-                      <h4 className="text-xs font-bold text-white">Comparative Core Web Vitals Differential</h4>
+                    <div className="p-5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                      <h4 className="text-xs font-bold text-slate-900">Comparative Core Web Vitals Differential</h4>
                       <div className="h-64 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={comparisonChartData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                             <XAxis dataKey="name" stroke="#64748B" fontSize={11} />
                             <YAxis stroke="#64748B" fontSize={11} />
                             <Tooltip
-                              contentStyle={{ backgroundColor: "#0F172A", borderColor: "#334155", fontSize: "11px", borderRadius: "8px" }}
+                              contentStyle={{ backgroundColor: "#FFFFFF", borderColor: "#E2E8F0", color: "#0F172A", fontSize: "11px", borderRadius: "8px" }}
                             />
                             <Legend wrapperStyle={{ fontSize: "11px" }} />
                             {profileKeysInChart.map((pName, idx) => (
@@ -2148,19 +2148,19 @@ export default function TierLensApp() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs font-mono">
                         <thead>
-                          <tr className="border-b border-slate-800 text-slate-400 font-semibold bg-[#111A30]">
+                          <tr className="border-b border-slate-200 text-slate-500 font-semibold bg-slate-50">
                             <th className="py-2.5 px-3">Metric</th>
                             <th className="py-2.5 px-3">Unit</th>
                             {profileKeysInChart.map(pName => (
-                              <th key={pName} className="py-2.5 px-3 text-white">{pName}</th>
+                              <th key={pName} className="py-2.5 px-3 text-slate-900">{pName}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/80">
                           {comparisonChartData.map((row: any) => (
-                            <tr key={row.name} className="hover:bg-slate-800/30">
-                              <td className="py-3 px-3 font-bold text-white">{row.name}</td>
-                              <td className="py-3 px-3 text-slate-400">{row.unit}</td>
+                            <tr key={row.name} className="hover:bg-slate-100/30">
+                              <td className="py-3 px-3 font-bold text-slate-900">{row.name}</td>
+                              <td className="py-3 px-3 text-slate-500">{row.unit}</td>
                               {profileKeysInChart.map(pName => (
                                 <td key={pName} className="py-3 px-3 text-slate-200">
                                   {row[pName] !== undefined && row[pName] !== null ? row[pName] : "N/A"}
@@ -2182,12 +2182,12 @@ export default function TierLensApp() {
           {/* ========================================================================= */}
           {activeTab === "failures" && (
             <div className="space-y-6">
-              <div className="p-6 rounded-xl bg-[#0D1527] border border-slate-800 shadow-sm">
-                <h2 className="text-base font-bold text-white flex items-center gap-2 mb-2">
+              <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm">
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2 mb-2">
                   <AlertOctagon className="w-5 h-5 text-rose-500" />
                   Evidence-Based Failure Explorer
                 </h2>
-                <p className="text-xs text-slate-400 mb-6">
+                <p className="text-xs text-slate-500 mb-6">
                   Captures authentic JavaScript console errors, HTTP status failures, and navigation timeouts.
                 </p>
 
@@ -2202,16 +2202,16 @@ export default function TierLensApp() {
                       ...(comparisonData?.device_specific_failures || []),
                       ...(comparisonData?.good_budget_run?.failures || [])
                     ].map((f: any, idx: number) => (
-                      <div key={idx} className="p-4 rounded-xl bg-[#111A30] border border-rose-500/30 space-y-2">
+                      <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-rose-500/30 space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-xs text-rose-300">{f.title}</span>
                           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/30">
                             {f.failure_type}
                           </span>
                         </div>
-                        <div className="text-xs text-slate-300 font-mono">{f.message}</div>
+                        <div className="text-xs text-slate-700 font-mono">{f.message}</div>
                         {f.signature && (
-                          <div className="text-[10px] text-slate-400 font-mono">
+                          <div className="text-[10px] text-slate-500 font-mono">
                             Signature Hash: {f.signature}
                           </div>
                         )}
@@ -2228,12 +2228,12 @@ export default function TierLensApp() {
           {/* ========================================================================= */}
           {(activeTab === "rca" || activeTab === "optimizations") && (
             <div className="space-y-6">
-              <div className="p-6 rounded-xl bg-[#0D1527] border border-slate-800 shadow-sm">
-                <h2 className="text-base font-bold text-white flex items-center gap-2 mb-2">
+              <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm">
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2 mb-2">
                   <Brain className="w-5 h-5 text-pink-400" />
                   Deterministic & AI-Assisted Root Cause Intelligence
                 </h2>
-                <p className="text-xs text-slate-400 mb-6">
+                <p className="text-xs text-slate-500 mb-6">
                   Synthesizes real Web Vitals measurements, long tasks, and resource transfers into verified remediation steps.
                 </p>
 
@@ -2244,18 +2244,18 @@ export default function TierLensApp() {
                 ) : (
                   <div className="space-y-4">
                     {recommendations.map((r: any, idx: number) => (
-                      <div key={idx} className="p-5 rounded-xl bg-[#111A30] border border-slate-700/80 space-y-3">
+                      <div key={idx} className="p-5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
                         <div className="flex items-center justify-between">
-                          <div className="font-bold text-sm text-white">{r.title}</div>
+                          <div className="font-bold text-sm text-slate-900">{r.title}</div>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono ${
                             r.impact === "HIGH" ? "bg-rose-500/20 text-rose-300 border border-rose-500/30" : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                           }`}>
                             {r.impact} IMPACT
                           </span>
                         </div>
-                        <div className="text-xs text-slate-300">{r.probable_cause}</div>
-                        <div className="p-3 rounded bg-[#0A0F1D] border border-slate-800 text-xs text-slate-300">
-                          <span className="font-semibold text-slate-400 block mb-1">Concrete Remediation:</span>
+                        <div className="text-xs text-slate-700">{r.probable_cause}</div>
+                        <div className="p-3 rounded bg-slate-50 border border-slate-200 text-xs text-slate-700">
+                          <span className="font-semibold text-slate-500 block mb-1">Concrete Remediation:</span>
                           <pre className="whitespace-pre-wrap font-sans">{r.remediation || r.recommended_fix}</pre>
                         </div>
                       </div>
@@ -2271,23 +2271,23 @@ export default function TierLensApp() {
           {/* ========================================================================= */}
           {activeTab === "graph" && (
             <div className="space-y-6">
-              <div className="p-6 rounded-xl bg-[#0D1527] border border-slate-800 shadow-sm">
+              <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-base font-bold text-white flex items-center gap-2">
+                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                       <Database className="w-5 h-5 text-amber-400" />
                       Knowledge Graph Intelligence
                     </h2>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-xs text-slate-500 mt-0.5">
                       Explores relationships between Projects, Device Profiles, Test Runs, Metrics, Failures, and Root Causes.
                     </p>
                   </div>
-                  <div className="text-xs font-mono text-slate-400">
+                  <div className="text-xs font-mono text-slate-500">
                     Source: <span className="text-white">{graphData.source || (graphData.connected ? "Neo4j Bolt" : "PostgreSQL Topology")}</span>
                   </div>
                 </div>
 
-                <div className="rounded-xl overflow-hidden border border-slate-800 bg-[#070B14]">
+                <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
                   <IntelligenceGraph data={graphData} onRefresh={refreshHealth} />
                 </div>
               </div>
@@ -2299,30 +2299,30 @@ export default function TierLensApp() {
           {/* ========================================================================= */}
           {activeTab === "android_test" && (
             <div className="space-y-6">
-              <div className="p-6 rounded-xl bg-[#0D1527] border border-slate-800 shadow-sm">
-                <h2 className="text-base font-bold text-white flex items-center gap-2 mb-2">
+              <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm">
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2 mb-2">
                   <Smartphone className="w-5 h-5 text-emerald-500" />
                   Engine B: Android APK Device Testing
                 </h2>
-                <p className="text-xs text-slate-400 mb-6">
+                <p className="text-xs text-slate-500 mb-6">
                   Upload native Android APKs for inspection, activity resolution, and ADB hardware test execution.
                 </p>
 
-                <div className="p-4 rounded-xl bg-[#111A30] border border-slate-700/80 space-y-3">
-                  <div className="text-xs font-semibold text-slate-300">Upload Native APK Package</div>
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                  <div className="text-xs font-semibold text-slate-700">Upload Native APK Package</div>
                   <input
                     type="file"
                     accept=".apk"
                     onChange={handleApkUpload}
-                    className="text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500"
+                    className="text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500"
                   />
                   {isUploadingApk && <div className="text-xs text-blue-400 animate-pulse">Analyzing APK manifest...</div>}
 
                   {apkManifest && (
-                    <div className="mt-4 p-4 rounded-lg bg-[#0A0F1D] border border-slate-800 text-xs font-mono space-y-2">
+                    <div className="mt-4 p-4 rounded-lg bg-slate-50 border border-slate-200 text-xs font-mono space-y-2">
                       <div>Package: <span className="text-emerald-400 font-bold">{apkManifest.package_name}</span></div>
                       <div>App Name: <span className="text-white">{apkManifest.app_name}</span></div>
-                      <div>Version: <span className="text-slate-300">{apkManifest.version_name} (Code: {apkManifest.version_code})</span></div>
+                      <div>Version: <span className="text-slate-700">{apkManifest.version_name} (Code: {apkManifest.version_code})</span></div>
                       <div>Launch Activity: <span className="text-blue-400">{apkManifest.launchable_activity}</span></div>
                     </div>
                   )}
@@ -2336,19 +2336,19 @@ export default function TierLensApp() {
           {/* ========================================================================= */}
           {activeTab === "device_lab" && (
             <div className="space-y-6">
-              <div className="p-6 rounded-xl bg-[#0D1527] border border-slate-800 shadow-sm">
-                <h2 className="text-base font-bold text-white flex items-center gap-2 mb-2">
+              <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm">
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2 mb-2">
                   <Radio className="w-5 h-5 text-purple-400" />
                   Connected Device Lab & Tier Diagnostics
                 </h2>
-                <p className="text-xs text-slate-400 mb-6">
+                <p className="text-xs text-slate-500 mb-6">
                   Real-time status of ADB daemon, connected physical phones, and Android emulators.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 rounded-xl bg-[#111A30] border border-slate-700 space-y-2">
-                    <span className="text-xs font-bold text-white block">ADB Host Daemon</span>
-                    <div className="text-xs font-mono text-slate-400">
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                    <span className="text-xs font-bold text-slate-900 block">ADB Host Daemon</span>
+                    <div className="text-xs font-mono text-slate-500">
                       Status: <span className={deviceLabStatus?.adb_available ? "text-emerald-400 font-bold" : "text-amber-400"}>
                         {deviceLabStatus?.adb_available ? "CONNECTED" : "SETUP_REQUIRED"}
                       </span>
@@ -2358,8 +2358,8 @@ export default function TierLensApp() {
                     </p>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-[#111A30] border border-slate-700 space-y-2">
-                    <span className="text-xs font-bold text-white block">Web Browser Engine</span>
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                    <span className="text-xs font-bold text-slate-900 block">Web Browser Engine</span>
                     <div className="text-xs font-mono text-emerald-400 font-bold">PLAYWRIGHT CHROMIUM READY</div>
                     <p className="text-[11px] text-slate-500">
                       Full CDP CPU & Network emulation operational.
@@ -2374,14 +2374,14 @@ export default function TierLensApp() {
           {/* TAB: DOCUMENTATION & SETTINGS */}
           {/* ========================================================================= */}
           {activeTab === "docs" && (
-            <div className="p-6 rounded-xl bg-[#0D1527] border border-slate-800 text-xs text-slate-300 space-y-4">
-              <h2 className="text-base font-bold text-white">TierLens Architecture & Testing Methodology</h2>
+            <div className="p-6 rounded-xl bg-white border border-slate-200 text-xs text-slate-700 space-y-4">
+              <h2 className="text-base font-bold text-slate-900">TierLens Architecture & Testing Methodology</h2>
               <p>
                 TierLens is an enterprise device intelligence platform enabling developers to test web applications
                 under configurable hardware constraints (CPU throttling, network latency, bandwidth throttling).
               </p>
-              <h3 className="font-bold text-white text-sm pt-2">CDP Emulation & Technical Accuracy</h3>
-              <ul className="list-disc pl-5 space-y-1 text-slate-400">
+              <h3 className="font-bold text-slate-900 text-sm pt-2">CDP Emulation & Technical Accuracy</h3>
+              <ul className="list-disc pl-5 space-y-1 text-slate-500">
                 <li>CPU Throttling: Emulation.setCPUThrottlingRate reduces execution thread speed by integer/float multiples.</li>
                 <li>Network Emulation: Network.emulateNetworkConditions introduces RTT latency, download caps, and upload limits.</li>
                 <li>RAM & Storage: Analyzed as device specifications for correlation; host hardware memory is preserved safely.</li>
@@ -2390,20 +2390,20 @@ export default function TierLensApp() {
           )}
 
           {activeTab === "settings" && (
-            <div className="p-6 rounded-xl bg-[#0D1527] border border-slate-800 text-xs text-slate-300 space-y-4">
-              <h2 className="text-base font-bold text-white">Platform Settings</h2>
+            <div className="p-6 rounded-xl bg-white border border-slate-200 text-xs text-slate-700 space-y-4">
+              <h2 className="text-base font-bold text-slate-900">Platform Settings</h2>
               <div className="space-y-2 font-mono">
                 <div>PostgreSQL DB: <span className="text-emerald-400">ep-mute-sun-bi9ugppk.aws.neon.tech</span></div>
-                <div>Neo4j Bolt: <span className="text-slate-400">{systemHealth?.neo4j?.uri || "bolt://localhost:7687"}</span></div>
+                <div>Neo4j Bolt: <span className="text-slate-500">{systemHealth?.neo4j?.uri || "bolt://localhost:7687"}</span></div>
                 <div>Browser Runner: <span className="text-blue-400">Playwright Chromium (Headless)</span></div>
               </div>
             </div>
           )}
 
           {activeTab === "reports" && (
-            <div className="p-6 rounded-xl bg-[#0D1527] border border-slate-800 text-xs text-slate-300 space-y-4">
-              <h2 className="text-base font-bold text-white">Audit Reports & Verification Logs</h2>
-              <p className="text-slate-400">
+            <div className="p-6 rounded-xl bg-white border border-slate-200 text-xs text-slate-700 space-y-4">
+              <h2 className="text-base font-bold text-slate-900">Audit Reports & Verification Logs</h2>
+              <p className="text-slate-500">
                 Full system verification reports are archived in the repository root (TIERLENS_NEON_READINESS_REPORT.md, BUILD_STATUS.md).
               </p>
             </div>
