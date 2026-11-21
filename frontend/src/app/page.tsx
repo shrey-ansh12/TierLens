@@ -1122,6 +1122,15 @@ export default function TierLensApp() {
               Intelligence Explorer
             </button>
             <button
+              onClick={() => navigateToTab("reports")}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                activeTab === "reports" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
+              }`}
+            >
+              <FileText className="w-4 h-4 text-[#D97745]" />
+              Interactive Audit Reports
+            </button>
+            <button
               onClick={() => navigateToTab("optimizations")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
                 activeTab === "optimizations" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
@@ -3121,7 +3130,25 @@ export default function TierLensApp() {
           {activeTab === "live_arena" && (
             <LiveTestingArena
               initialJobId={liveArenaJobId || activeJob?.job_id}
-              onOpenAuditReport={(jId) => handleOpenAuditReport(comparisonData || testResult?.single_run_data || testResult)}
+              onOpenAuditReport={async (jId, runId, payload) => {
+                if (payload) {
+                  handleOpenAuditReport(payload);
+                  return;
+                }
+                if (jId) {
+                  try {
+                    const res = await ApiClient.getWebJobStatus(jId);
+                    const data = res?.comparison_data || res?.single_run_data || res;
+                    if (data) {
+                      handleOpenAuditReport(data);
+                      return;
+                    }
+                  } catch (e) {
+                    console.error("Failed to load audit report for job:", e);
+                  }
+                }
+                handleOpenAuditReport(comparisonData || testResult?.single_run_data || testResult);
+              }}
               onOpenDeviceArena={(url) => { setTestUrl(url); navigateToTab("battle_arena"); }}
               onOpenGraph={() => navigateToTab("graph")}
             />
@@ -3133,7 +3160,13 @@ export default function TierLensApp() {
           {activeTab === "battle_arena" && (
             <DeviceBattleArena
               initialUrl={testUrl}
-              onOpenAuditReport={(compId) => handleOpenAuditReport(comparisonData || testResult?.single_run_data || testResult)}
+              onOpenAuditReport={(compId, runId, payload) => {
+                if (payload) {
+                  handleOpenAuditReport(payload);
+                } else {
+                  handleOpenAuditReport(comparisonData || testResult?.single_run_data || testResult);
+                }
+              }}
               onOpenLiveArena={(jId) => { setLiveArenaJobId(jId); navigateToTab("live_arena"); }}
             />
           )}

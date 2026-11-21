@@ -21,9 +21,11 @@ import {
   Sparkles,
   Copy,
   Check,
-  Globe
+  Globe,
+  Share2
 } from "lucide-react";
 import { ApiClient } from "@/lib/api";
+import AuditReportModal from "@/components/AuditReportModal";
 
 const STAGES = [
   { id: 1, name: "Browser Initialization", desc: "Chromium headless allocation & CDP hardware throttling" },
@@ -43,7 +45,7 @@ interface LogEntry {
 
 interface LiveTestingArenaProps {
   initialJobId?: string | null;
-  onOpenAuditReport?: (jobId: string, runId?: string) => void;
+  onOpenAuditReport?: (jobId: string, runId?: string, payload?: any) => void;
   onOpenDeviceArena?: (url: string) => void;
   onOpenGraph?: () => void;
 }
@@ -65,6 +67,7 @@ export default function LiveTestingArena({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copiedLogs, setCopiedLogs] = useState(false);
   const [liveMetrics, setLiveMetrics] = useState<Record<string, { value: number | string; rating?: string }>>({});
+  const [localReportModalOpen, setLocalReportModalOpen] = useState(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const logContainerRef = useRef<HTMLDivElement | null>(null);
@@ -117,19 +120,44 @@ export default function LiveTestingArena({
           setLogs(res.logs);
         }
 
-        // Update live metrics if available
-        if (res.metrics_summary) {
-          const mapped: Record<string, any> = {};
+        // Update live metrics from all available channels
+        const incomingMetrics: Record<string, { value: number | string; rating?: string }> = {};
+
+        if (res.metrics_summary && Object.keys(res.metrics_summary).length > 0) {
           Object.entries(res.metrics_summary).forEach(([k, v]) => {
-            mapped[k] = { value: v as any };
+            if (v && typeof v === "object" && "value" in (v as any)) {
+              incomingMetrics[k] = { value: (v as any).value, rating: (v as any).rating };
+            } else {
+              incomingMetrics[k] = { value: v as any };
+            }
           });
-          setLiveMetrics(mapped);
-        } else if (res.current_metrics) {
-          const mapped: Record<string, any> = {};
+        }
+
+        if (res.current_metrics && Object.keys(res.current_metrics).length > 0) {
           Object.entries(res.current_metrics).forEach(([k, v]) => {
-            mapped[k] = { value: v as any };
+            if (v && typeof v === "object" && "value" in (v as any)) {
+              incomingMetrics[k] = { value: (v as any).value, rating: (v as any).rating };
+            } else {
+              incomingMetrics[k] = { value: v as any };
+            }
           });
-          setLiveMetrics(mapped);
+        }
+
+        // Also parse live measured vitals from stream logs
+        if (res.logs && Array.isArray(res.logs)) {
+          res.logs.forEach((l: any) => {
+            const match = l.message?.match(/Vital measured:\s*([A-Za-z_]+)\s*=\s*([0-9.]+)\s*(\w+)?\s*\(([^)]+)\)/);
+            if (match) {
+              const k = match[1];
+              const val = parseFloat(match[2]);
+              const rat = match[4];
+              incomingMetrics[k] = { value: val, rating: rat };
+            }
+          });
+        }
+
+        if (Object.keys(incomingMetrics).length > 0) {
+          setLiveMetrics((prev) => ({ ...prev, ...incomingMetrics }));
         }
 
         // Terminal states
@@ -307,6 +335,64 @@ export default function LiveTestingArena({
         )}
       </div>
 
+      {/* Interactive Audit Report Completion Banner */}
+      {isCompleted && (
+        <div className="bg-[#EBF5F0] border border-[#CDE5D8] rounded-xl p-4 shadow-warm flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3">
+            <span className="w-10 h-10 rounded-xl bg-[#36865A] text-white flex items-center justify-center shrink-0 shadow-xs">
+              <CheckCircle2 className="w-6 h-6" />
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-[#252525]">
+                  Test Execution Completed — Interactive Audit Report Ready
+                </h3>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[#36865A] text-white">
+                  {jobStatus?.status}
+                </span>
+              </div>
+              <p className="text-xs text-[#6B6B65] mt-0.5">
+                All Web Vitals, resource metrics, anomalies, and Playwright screenshots were captured and synced with Neo4j.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => {
+                const payload = jobStatus?.comparison_data || jobStatus?.single_run_data || jobStatus;
+                if (onOpenAuditReport) {
+                  onOpenAuditReport(jobId!, jobStatus?.test_run_id, payload);
+                }
+                setLocalReportModalOpen(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-[#D97745] hover:bg-[#B95E32] text-white text-xs font-bold rounded-lg transition-colors shadow-warm"
+            >
+              <FileText className="w-4 h-4" />
+              <span>Open Interactive Audit Report</span>
+            </button>
+            {onOpenDeviceArena && (
+              <button
+                onClick={() => onOpenDeviceArena(targetUrl)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-[#FAF9F5] border border-[#E6E2D9] text-[#252525] text-xs font-semibold rounded-lg transition-colors"
+              >
+                <GitCompare className="w-3.5 h-3.5 text-[#D97745]" />
+                <span>Battle Arena</span>
+              </button>
+            )}
+            {onOpenGraph && (
+              <button
+                onClick={onOpenGraph}
+                className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-[#FAF9F5] border border-[#E6E2D9] text-[#252525] text-xs font-semibold rounded-lg transition-colors"
+              >
+                <Share2 className="w-3.5 h-3.5 text-[#557DAA]" />
+                <span>Neo4j Graph</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Execution Tracker: Status Header & Timer */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* State Status Card */}
@@ -474,17 +560,37 @@ export default function LiveTestingArena({
               { key: "LCP", label: "Largest Contentful Paint", unit: "ms", goodThreshold: 2500 },
               { key: "CLS", label: "Cumulative Layout Shift", unit: "", goodThreshold: 0.1 },
               { key: "PAGE_LOAD_TIME", label: "Full Page Load Time", unit: "ms", goodThreshold: 5000 },
-              { key: "TOTAL_RESOURCES", label: "Subresource Assets", unit: "count", goodThreshold: 60 }
+              { key: "TOTAL_RESOURCES", label: "Subresource Assets", unit: "reqs", goodThreshold: 60 },
+              { key: "TRANSFER_SIZE_KB", label: "Total Transferred", unit: "KB", goodThreshold: 1000 },
+              { key: "LONG_TASKS_COUNT", label: "Main Thread Long Tasks", unit: "tasks", goodThreshold: 2 },
             ].map((spec) => {
-              const val = liveMetrics[spec.key]?.value;
+              const metricItem = liveMetrics[spec.key];
+              const val = metricItem?.value;
+              const rating = metricItem?.rating;
               const hasVal = val !== undefined;
+
+              let badgeColor = "bg-[#FAF9F5] text-[#96948D] border-[#E6E2D9]";
+              let ratingText = rating;
+              if (rating) {
+                const rUpper = rating.toUpperCase();
+                if (rUpper.includes("GOOD")) {
+                  badgeColor = "bg-[#EBF5F0] text-[#36865A] border-[#CDE5D8]";
+                  ratingText = "Good";
+                } else if (rUpper.includes("NEED") || rUpper.includes("IMPROVE")) {
+                  badgeColor = "bg-[#FDF3E7] text-[#C58A35] border-[#F2D7B3]";
+                  ratingText = "Needs Work";
+                } else if (rUpper.includes("POOR") || rUpper.includes("FAIL")) {
+                  badgeColor = "bg-[#FBEBEB] text-[#C6534B] border-[#F0C4C1]";
+                  ratingText = "Poor";
+                }
+              }
 
               return (
                 <div
                   key={spec.key}
                   className={`p-3 rounded-lg border flex items-center justify-between transition-all ${
                     hasVal
-                      ? "bg-[#FAF9F5] border-[#E6E2D9]"
+                      ? "bg-[#FAF9F5] border-[#E6E2D9] shadow-2xs"
                       : "bg-[#FAF9F5]/40 border-[#E6E2D9]/60 opacity-60"
                   }`}
                 >
@@ -492,11 +598,18 @@ export default function LiveTestingArena({
                     <span className="text-xs font-medium text-[#252525] block">{spec.label}</span>
                     <span className="text-[10px] text-[#96948D]">{spec.key}</span>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex items-center gap-2">
                     {hasVal ? (
-                      <span className="text-sm font-mono font-bold text-[#252525]">
-                        {val} {spec.unit}
-                      </span>
+                      <>
+                        <span className="text-sm font-mono font-bold text-[#252525]">
+                          {typeof val === "number" ? val.toLocaleString() : val} {spec.unit}
+                        </span>
+                        {ratingText && (
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${badgeColor}`}>
+                            {ratingText}
+                          </span>
+                        )}
+                      </>
                     ) : (
                       <span className="text-xs font-mono text-[#96948D] animate-pulse">
                         Waiting...
@@ -512,7 +625,13 @@ export default function LiveTestingArena({
           {isCompleted && (
             <div className="mt-4 pt-4 border-t border-[#E6E2D9] space-y-2">
               <button
-                onClick={() => onOpenAuditReport && onOpenAuditReport(jobId!, jobStatus?.test_run_id)}
+                onClick={() => {
+                  const payload = jobStatus?.comparison_data || jobStatus?.single_run_data || jobStatus;
+                  if (onOpenAuditReport) {
+                    onOpenAuditReport(jobId!, jobStatus?.test_run_id, payload);
+                  }
+                  setLocalReportModalOpen(true);
+                }}
                 className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-[#D97745] hover:bg-[#B95E32] text-white text-xs font-semibold rounded-lg transition-colors shadow-xs"
               >
                 <FileText className="w-3.5 h-3.5" />
@@ -597,6 +716,15 @@ export default function LiveTestingArena({
           </div>
         </div>
       </div>
+
+      {/* Local Audit Report Modal Fallback */}
+      {localReportModalOpen && (
+        <AuditReportModal
+          isOpen={localReportModalOpen}
+          onClose={() => setLocalReportModalOpen(false)}
+          reportData={jobStatus?.comparison_data || jobStatus?.single_run_data || jobStatus}
+        />
+      )}
     </div>
   );
 }

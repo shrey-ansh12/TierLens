@@ -114,7 +114,7 @@ const DEFAULT_PRESETS: ArenaPreset[] = [
 
 interface DeviceBattleArenaProps {
   initialUrl?: string;
-  onOpenAuditReport?: (jobId: string, runId?: string) => void;
+  onOpenAuditReport?: (jobId: string, runId?: string, payload?: any) => void;
   onOpenLiveArena?: (jobId: string) => void;
 }
 
@@ -565,7 +565,8 @@ export default function DeviceBattleArena({
                       onClick={() =>
                         onOpenAuditReport(
                           comparisonData.comparison_group_id,
-                          runs[selectedDeviceIndex].id
+                          runs[selectedDeviceIndex].id,
+                          comparisonData
                         )
                       }
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-[#D97745] hover:bg-[#B95E32] text-white text-xs font-semibold rounded-lg transition-colors shadow-xs"

@@ -133,7 +133,10 @@ class JobStore:
                 rec["stage_name"] = stage_name
                 rec["stage"] = stage_name
             if metric and "current_metrics" in rec:
-                rec["current_metrics"][metric["name"]] = metric["value"]
+                rec["current_metrics"][metric["name"]] = {
+                    "value": metric.get("value"),
+                    "rating": metric.get("rating")
+                }
 
     async def update_job(self, job_id: str, **kwargs) -> Optional[Dict[str, Any]]:
         async with self._lock:

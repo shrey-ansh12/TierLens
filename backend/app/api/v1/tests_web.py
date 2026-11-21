@@ -191,6 +191,24 @@ async def get_web_job_status(
         if s_run:
             single_data = serialize_test_run(s_run)
 
+    # Resolve metrics_summary from record, current_metrics, single_run_data, or comparison_data
+    resolved_metrics_summary = record.get("metrics_summary") or {}
+    if not resolved_metrics_summary:
+        if record.get("current_metrics"):
+            resolved_metrics_summary = record["current_metrics"]
+        elif single_data and single_data.get("metrics"):
+            resolved_metrics_summary = {m["name"]: m["value"] for m in single_data["metrics"]}
+        elif comp_data:
+            gb_metrics = comp_data.get("good_budget", {}).get("metrics") or []
+            for m in gb_metrics:
+                resolved_metrics_summary[m["name"]] = m["value"]
+            if not resolved_metrics_summary and comp_data.get("runs") and len(comp_data["runs"]) > 0:
+                for m in comp_data["runs"][0].get("metrics", []):
+                    resolved_metrics_summary[m["name"]] = m["value"]
+            if not resolved_metrics_summary and comp_data.get("configurations"):
+                for m in comp_data["configurations"][0].get("metrics", []):
+                    resolved_metrics_summary[m["name"]] = m["value"]
+
     return JobStatusResponse(
         job_id=record["job_id"],
         status=record["status"],
@@ -209,7 +227,7 @@ async def get_web_job_status(
         error_details=record.get("error_details"),
         final_url=record.get("final_url"),
         redirect_count=record.get("redirect_count", 0),
-        metrics_summary=record.get("metrics_summary"),
+        metrics_summary=resolved_metrics_summary,
         comparison_group_id=comp_id,
         good_budget_run_id=record.get("good_budget_run_id"),
         entry_level_run_id=record.get("entry_level_run_id"),
