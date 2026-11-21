@@ -1,3 +1,4 @@
+import os
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -94,18 +95,31 @@ def serialize_test_run(r: Optional[TestRun]) -> Optional[Dict[str, Any]]:
         failures_data = []
 
     artifacts_data = []
+    primary_screenshot_url = None
     try:
         raw_artifacts = getattr(r, "artifacts", None) or []
         for a in raw_artifacts:
-            artifacts_data.append({
+            art_dict = {
                 "id": a.id,
                 "artifact_type": a.artifact_type,
                 "file_path": a.file_path,
                 "file_size_bytes": a.file_size_bytes,
                 "mime_type": a.mime_type
-            })
+            }
+            if a.file_path:
+                fname = os.path.basename(a.file_path)
+                art_url = f"/artifacts/{fname}"
+                art_dict["url"] = art_url
+                if a.artifact_type == "SCREENSHOT" and not primary_screenshot_url:
+                    primary_screenshot_url = art_url
+            artifacts_data.append(art_dict)
     except Exception:
         artifacts_data = []
+
+    # Ensure every failure has a screenshot_url attached if available
+    for f in failures_data:
+        if not f.get("screenshot_url") and primary_screenshot_url:
+            f["screenshot_url"] = primary_screenshot_url
 
     recs_data = []
     try:
@@ -145,6 +159,7 @@ def serialize_test_run(r: Optional[TestRun]) -> Optional[Dict[str, Any]]:
         "metrics": metrics_data,
         "failures": failures_data,
         "artifacts": artifacts_data,
+        "screenshot_url": primary_screenshot_url,
         "recommendations": recs_data
     }
 

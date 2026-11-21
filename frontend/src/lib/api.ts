@@ -249,9 +249,48 @@ export class ApiClient {
     return this.request(`/api/v1/comparisons/${comparisonGroupId}`);
   }
 
-  // Graph
+  // Graph & Intelligence Explorer
   static getGraphStatus() {
     return this.request("/api/v1/graph/status");
+  }
+
+  static getGraphStats() {
+    return this.request("/api/v1/graph/stats");
+  }
+
+  static getExplorerGraph(params: { projectId?: string; nodeType?: string; search?: string; limit?: number } = {}) {
+    const q = new URLSearchParams();
+    if (params.projectId) q.set("project_id", params.projectId);
+    if (params.nodeType && params.nodeType !== "ALL") q.set("node_type", params.nodeType);
+    if (params.search) q.set("search", params.search);
+    if (params.limit) q.set("limit", String(params.limit));
+    const qs = q.toString();
+    return this.request(`/api/v1/graph/explorer${qs ? `?${qs}` : ""}`);
+  }
+
+  static getFailurePatterns() {
+    return this.request("/api/v1/graph/failure-patterns");
+  }
+
+  static getDeviceImpact() {
+    return this.request("/api/v1/graph/device-impact");
+  }
+
+  static getRootCauseChains(limit: number = 50) {
+    return this.request(`/api/v1/graph/root-causes?limit=${limit}`);
+  }
+
+  static getHistoricalRuns(params: { projectId?: string; status?: string; limit?: number } = {}) {
+    const q = new URLSearchParams();
+    if (params.projectId) q.set("project_id", params.projectId);
+    if (params.status) q.set("status", params.status);
+    if (params.limit) q.set("limit", String(params.limit));
+    const qs = q.toString();
+    return this.request(`/api/v1/graph/historical-runs${qs ? `?${qs}` : ""}`);
+  }
+
+  static getNodeDetails(nodeId: string) {
+    return this.request(`/api/v1/graph/node/${encodeURIComponent(nodeId)}`);
   }
 
   static getProjectGraph(projectId: string) {

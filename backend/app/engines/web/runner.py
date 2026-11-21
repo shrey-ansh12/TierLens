@@ -53,7 +53,8 @@ async def run_web_performance_test(
     profile_input: Any = None,
     test_run_id: Optional[str] = None,
     timeout_seconds: Optional[int] = None,
-    profile_key: Optional[str] = None
+    profile_key: Optional[str] = None,
+    on_event: Optional[Any] = None
 ) -> WebTestResult:
     """
     Executes an isolated, resilient Playwright headless Chromium performance test.
@@ -63,6 +64,18 @@ async def run_web_performance_test(
     effective_profile = profile_input if profile_input is not None else (profile_key or "GOOD_BUDGET")
     profile = resolve_device_profile_config(effective_profile)
     profile_key = profile.get("tier", "CUSTOM")
+
+    async def emit_evt(stage_id: int, stage_name: str, message: str, level: str = "INFO", metric: Optional[Dict] = None):
+        if on_event:
+            try:
+                if asyncio.iscoroutinefunction(on_event):
+                    await on_event(stage_id, stage_name, message, level, metric)
+                else:
+                    on_event(stage_id, stage_name, message, level, metric)
+            except Exception:
+                pass
+
+    await emit_evt(1, "Browser Initialization", f"Configuring execution sandbox for {profile.get('name', 'Device Profile')}")
 
     # 1. SSRF Safety Check
     try:
@@ -238,10 +251,13 @@ async def run_web_performance_test(
             except Exception as cdp_err:
                 logger.warning(f"CDP emulation notice: {cdp_err}")
 
+            await emit_evt(1, "Browser Initialization", f"CDP hardware emulation active: {profile['cpu_throttle_rate']}x CPU slowdown, {profile['network']['name']} network emulation.")
+
             # 5. Multi-tier Navigation Strategy
             # Strategy: First wait for DOMContentLoaded (HTML parsed), then soft-wait for load state
             response = None
             nav_error = None
+            await emit_evt(2, "Website Loading", f"Initiating navigation to {safe_url} (timeout: {nav_timeout_ms/1000:.0f}s)...")
             try:
                 response = await page.goto(
                     safe_url,
@@ -392,11 +408,13 @@ async def run_web_performance_test(
                         "file_size_bytes": os.path.getsize(screenshot_path),
                         "mime_type": "image/png"
                     })
+                    await emit_evt(5, "Failure Detection", f"Visual rendering snapshot captured: {screenshot_filename}", level="INFO")
             except Exception as se:
                 logger.warning(f"Could not capture screenshot: {se}")
 
             # 10. Extract Accurate Performance Metrics (No Fake Metrics)
             if not is_access_restricted and status_code < 400:
+                await emit_evt(4, "Performance Measurement", "Evaluating browser Web Vitals via PerformanceObserver...")
                 try:
                     raw_vitals = await page.evaluate(WEB_VITALS_INJECTION_SCRIPT)
                 except Exception as eval_err:
@@ -426,6 +444,7 @@ async def run_web_performance_test(
                 for name, val, unit in metrics_specs:
                     if val is not None:
                         rating = calculate_vital_rating(name, float(val))
+                        await emit_evt(4, "Performance Measurement", f"Vital measured: {name} = {round(float(val), 2)} {unit} ({rating})", level="METRIC", metric={"name": name, "value": round(float(val), 2), "rating": rating})
                         result.metrics.append({
                             "name": name,
                             "value": round(float(val), 2),

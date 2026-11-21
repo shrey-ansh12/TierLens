@@ -30,7 +30,8 @@ async def _execute_single_tier(
     comparison_group_id: Optional[str],
     workspace_name: str,
     project_name: str,
-    db
+    db,
+    job_id: Optional[str] = None
 ):
     """
     Executes a single browser test run for a given device profile configuration.
@@ -76,11 +77,18 @@ async def _execute_single_tier(
     await db.commit()
     await db.refresh(test_run)
 
+    async def on_runner_event(stage_id: int, stage_name: str, message: str, level: str = "INFO", metric: Optional[Dict] = None):
+        if job_id:
+            await job_store.append_log(job_id, f"[{profile_name}] {message}", level=level, stage_id=stage_id, stage_name=stage_name, metric=metric)
+
+    await on_runner_event(1, "Browser Initialization", f"Allocating headless container and applying emulation specs...")
+
     # Execute Playwright Performance Test with CDP throttling
     result = await run_web_performance_test(
         target_url=target_url,
         profile_input=resolved_config,
-        test_run_id=test_run.id
+        test_run_id=test_run.id,
+        on_event=on_runner_event
     )
 
     # Update TestRun status & duration
@@ -110,6 +118,14 @@ async def _execute_single_tier(
         )
         db.add(db_metric)
 
+    # Extract primary screenshot URL
+    primary_screenshot_url = None
+    for a in result.artifacts:
+        if a.get("artifact_type") == "SCREENSHOT" and a.get("file_path"):
+            fname = os.path.basename(a["file_path"])
+            primary_screenshot_url = f"/artifacts/{fname}"
+            break
+
     # Persist Failures
     for f in result.failures:
         db_fail = TestFailure(
@@ -120,7 +136,7 @@ async def _execute_single_tier(
             error_signature=f["error_signature"],
             component=f.get("component"),
             url_or_file=f.get("url_or_file"),
-            screenshot_url=f.get("screenshot_url")
+            screenshot_url=f.get("screenshot_url") or primary_screenshot_url
         )
         db.add(db_fail)
 
@@ -133,6 +149,7 @@ async def _execute_single_tier(
             file_size_bytes=a["file_size_bytes"],
             mime_type=a["mime_type"]
         )
+        db.add(db_art)
         db.add(db_art)
 
     await db.flush()
@@ -293,7 +310,8 @@ async def orchestrate_web_test_job(
                         comparison_group_id=comparison_group_id,
                         workspace_name=workspace_name,
                         project_name=project_name,
-                        db=session
+                        db=session,
+                        job_id=job_id
                     )
                     completed_runs.append((run_obj, res_obj))
                 except Exception as tier_err:
@@ -304,7 +322,7 @@ async def orchestrate_web_test_job(
                     except Exception:
                         pass
 
-            # Stage 3: ANALYZING & BUILDING COMPARISON
+            # Stage 6: ANALYZING & BUILDING COMPARISON
             duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
             if is_comparison:
@@ -312,8 +330,11 @@ async def orchestrate_web_test_job(
                     job_id,
                     status=JobState.ANALYZING.value,
                     stage="Analyzing Discrepancies",
+                    stage_id=6,
+                    stage_name="Result Analysis",
                     progress_message="Aggregating performance metrics, degradation percentages, and RCA findings..."
                 )
+                await job_store.append_log(job_id, "Aggregating performance metrics, degradation percentages, and RCA findings...", stage_id=6, stage_name="Result Analysis")
 
                 session.expire_all()
                 comp_payload = await build_comparison_payload(comparison_group_id, session)
@@ -338,10 +359,14 @@ async def orchestrate_web_test_job(
                         final_status = JobState.COMPLETED.value
                         progress_msg = f"Multi-device comparison of {len(completed_runs)} configurations completed successfully."
 
+                await job_store.append_log(job_id, f"Multi-device shootout completed ({final_status}). Generated audit matrix.", level="SUCCESS", stage_id=7, stage_name="Report Generation")
+
                 await job_store.update_job(
                     job_id,
                     status=final_status,
                     stage="Completed" if final_status != JobState.FAILED.value else "Execution Failed",
+                    stage_id=7,
+                    stage_name="Report Generation",
                     progress_message=progress_msg,
                     comparison_group_id=comparison_group_id,
                     comparison_data=comp_payload,
@@ -386,10 +411,14 @@ async def orchestrate_web_test_job(
                     fresh_run = sr_res.scalars().first()
                     serialized_single = serialize_test_run(fresh_run)
 
+                    await job_store.append_log(job_id, f"Execution completed ({single_status}). Generated audit report.", level="SUCCESS", stage_id=7, stage_name="Report Generation")
+
                     await job_store.update_job(
                         job_id,
                         status=single_status,
                         stage="Completed" if single_status != JobState.FAILED.value else "Execution Failed",
+                        stage_id=7,
+                        stage_name="Report Generation",
                         progress_message=f"Test run completed ({single_run.status.replace('_', ' ')}).",
                         single_run_id=single_run.id,
                         single_run_data=serialized_single,

@@ -45,7 +45,8 @@ import {
   Wrench,
   Sparkles,
   HelpCircle,
-  Menu
+  Menu,
+  Eye
 } from "lucide-react";
 import {
   BarChart,
@@ -58,11 +59,20 @@ import {
   Legend
 } from "recharts";
 import IntelligenceGraph from "@/components/IntelligenceGraph";
+import IntelligenceExplorer from "@/components/IntelligenceExplorer";
+import HealthScoreCard from "@/components/HealthScoreCard";
+import VisualEvidenceViewer from "@/components/VisualEvidenceViewer";
+import LiveTestingArena from "@/components/LiveTestingArena";
+import DeviceBattleArena from "@/components/DeviceBattleArena";
+import AuditReportModal from "@/components/AuditReportModal";
+import AuditReportsView from "@/components/AuditReportsView";
 import { ApiClient } from "@/lib/api";
 
 type TabType =
   | "overview"
   | "web_test"
+  | "live_arena"
+  | "battle_arena"
   | "device_builder"
   | "android_test"
   | "compare"
@@ -414,6 +424,27 @@ export default function TierLensApp() {
   // Recommendations state
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [isCancelling, setIsCancelling] = useState(false);
+
+  // 5 Advanced Features State
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+  const [auditReportData, setAuditReportData] = useState<any>(null);
+  const [isEvidenceModalOpen, setIsEvidenceModalOpen] = useState(false);
+  const [evidenceFailures, setEvidenceFailures] = useState<any[]>([]);
+  const [evidenceScreenshot, setEvidenceScreenshot] = useState<string | undefined>(undefined);
+  const [evidenceDeviceName, setEvidenceDeviceName] = useState<string>("Target Device");
+  const [liveArenaJobId, setLiveArenaJobId] = useState<string | null>(null);
+
+  const handleOpenAuditReport = (data: any) => {
+    setAuditReportData(data);
+    setIsAuditModalOpen(true);
+  };
+
+  const handleOpenVisualEvidence = (failuresList: any[], screenshot?: string, devName?: string) => {
+    setEvidenceFailures(failuresList);
+    setEvidenceScreenshot(screenshot);
+    setEvidenceDeviceName(devName || "Target Device");
+    setIsEvidenceModalOpen(true);
+  };
 
   const ensureAuth = async () => {
     try {
@@ -1006,6 +1037,24 @@ export default function TierLensApp() {
               Website Testing
             </button>
             <button
+              onClick={() => navigateToTab("live_arena")}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                activeTab === "live_arena" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
+              }`}
+            >
+              <Terminal className="w-4 h-4 text-[#D97745]" />
+              Live Testing Arena
+            </button>
+            <button
+              onClick={() => navigateToTab("battle_arena")}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                activeTab === "battle_arena" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
+              }`}
+            >
+              <GitCompare className="w-4 h-4 text-[#D97745]" />
+              Device Battle Arena
+            </button>
+            <button
               onClick={() => navigateToTab("device_builder")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
                 activeTab === "device_builder" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
@@ -1069,8 +1118,8 @@ export default function TierLensApp() {
                 activeTab === "graph" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
               }`}
             >
-              <Database className="w-4 h-4 text-[#C58A35]" />
-              Neo4j Intelligence Graph
+              <Database className="w-4 h-4 text-[#D97745]" />
+              Intelligence Explorer
             </button>
             <button
               onClick={() => navigateToTab("optimizations")}
@@ -2230,11 +2279,11 @@ export default function TierLensApp() {
               {(comparisonData || testResult?.single_run_data) && (
                 <div className="space-y-6">
                   {/* Results Header */}
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] text-white shadow-sm">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] text-[#252525] shadow-xs">
                     <div>
                       <div className="flex items-center gap-2">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono uppercase ${
-                          testResult?.status === "COMPLETED" || comparisonData ? "bg-emerald-500/20 text-emerald-300 border border-[#36865A]/40" : "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                          testResult?.status === "COMPLETED" || comparisonData ? "bg-emerald-500/20 text-emerald-800 border border-[#36865A]/40" : "bg-amber-500/20 text-amber-800 border border-amber-500/40"
                         }`}>
                           {testResult?.status?.replace(/_/g, " ") || "COMPLETED"}
                         </span>
@@ -2246,6 +2295,55 @@ export default function TierLensApp() {
                         Results for Target: <span className="text-[#D97745] font-mono">{testResult?.target_url || testUrl}</span>
                       </h3>
                     </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleOpenAuditReport(comparisonData || testResult?.single_run_data || testResult)}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-[#D97745] hover:bg-[#B95E32] text-white text-xs font-semibold rounded-lg transition-colors shadow-xs"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>Interactive Audit Report</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (activeJob?.job_id) setLiveArenaJobId(activeJob.job_id);
+                          navigateToTab("live_arena");
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-[#FAF9F5] hover:bg-[#EEECE5] border border-[#E6E2D9] text-[#252525] text-xs font-semibold rounded-lg transition-colors"
+                      >
+                        <Terminal className="w-3.5 h-3.5 text-[#D97745]" />
+                        <span>Live Arena</span>
+                      </button>
+                      <button
+                        onClick={() => navigateToTab("battle_arena")}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-[#FAF9F5] hover:bg-[#EEECE5] border border-[#E6E2D9] text-[#252525] text-xs font-semibold rounded-lg transition-colors"
+                      >
+                        <GitCompare className="w-3.5 h-3.5 text-[#D97745]" />
+                        <span>Battle Arena</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Website Health Score Card Component */}
+                  <HealthScoreCard
+                    metrics={
+                      comparisonData?.good_budget_run?.metrics ||
+                      comparisonData?.runs?.[0]?.metrics ||
+                      testResult?.single_run_data?.metrics ||
+                      []
+                    }
+                    failures={
+                      comparisonData?.entry_level_run?.failures ||
+                      comparisonData?.runs?.[0]?.failures ||
+                      testResult?.single_run_data?.failures ||
+                      []
+                    }
+                    deviceName={
+                      comparisonData?.good_budget_run?.device_profile?.name ||
+                      testResult?.single_run_data?.device_profile?.name
+                    }
+                    targetUrl={testResult?.target_url || testUrl}
+                  />
 
                     {/* The ₹8,000 Cheap Phone Test Verdict (T1.2) */}
                     {comparisonData?.cheap_phone_verdict && (
@@ -2289,7 +2387,6 @@ export default function TierLensApp() {
                         </div>
                       </div>
                     )}
-                  </div>
 
                   {/* Multi-Device Comparison Visualizer */}
                   {comparisonChartData.length > 0 && (
@@ -2471,11 +2568,20 @@ export default function TierLensApp() {
                                             {f.message}
                                           </div>
                                         )}
-                                        {f.url_or_file && (
-                                          <div className="text-[10px] text-[#6B6B65] truncate pt-0.5">
-                                            Failing Endpoint: <span className="text-[#D97745] underline">{f.url_or_file}</span>
-                                          </div>
-                                        )}
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-[#E6E2D9]/40 mt-1">
+                                          {f.url_or_file ? (
+                                            <div className="text-[10px] text-[#6B6B65] truncate flex-1">
+                                              Endpoint: <span className="text-[#D97745] underline">{f.url_or_file}</span>
+                                            </div>
+                                          ) : <div />}
+                                          <button
+                                            onClick={() => handleOpenVisualEvidence([f], f.screenshot_url || r.screenshot_url, profName)}
+                                            className="text-[11px] font-semibold text-[#D97745] hover:text-[#B95E32] flex items-center gap-1 transition-colors self-end sm:self-auto shrink-0"
+                                          >
+                                            <Eye className="w-3.5 h-3.5" />
+                                            <span>View Evidence</span>
+                                          </button>
+                                        </div>
                                       </div>
                                     ))}
                                   </div>
@@ -2843,31 +2949,10 @@ export default function TierLensApp() {
           )}
 
           {/* ========================================================================= */}
-          {/* TAB: NEO4J KNOWLEDGE GRAPH */}
+          {/* TAB: NEO4J INTELLIGENCE EXPLORER */}
           {/* ========================================================================= */}
           {activeTab === "graph" && (
-            <div className="space-y-6">
-              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h2 className="text-base font-bold text-[#252525] flex items-center gap-2">
-                      <Database className="w-5 h-5 text-[#C58A35]" />
-                      Knowledge Graph Intelligence
-                    </h2>
-                    <p className="text-xs text-[#6B6B65] mt-0.5">
-                      Explores relationships between Projects, Device Profiles, Test Runs, Metrics, Failures, and Root Causes.
-                    </p>
-                  </div>
-                  <div className="text-xs font-mono text-[#6B6B65]">
-                    Source: <span className="text-white">{graphData.source || (graphData.connected ? "Neo4j Bolt" : "PostgreSQL Topology")}</span>
-                  </div>
-                </div>
-
-                <div className="rounded-xl overflow-hidden border border-[#E6E2D9] bg-[#FAF9F6]">
-                  <IntelligenceGraph data={graphData} onRefresh={refreshHealth} />
-                </div>
-              </div>
-            </div>
+            <IntelligenceExplorer />
           )}
 
           {/* ========================================================================= */}
@@ -3030,17 +3115,61 @@ export default function TierLensApp() {
             </div>
           )}
 
+          {/* ========================================================================= */}
+          {/* TAB: LIVE TESTING ARENA */}
+          {/* ========================================================================= */}
+          {activeTab === "live_arena" && (
+            <LiveTestingArena
+              initialJobId={liveArenaJobId || activeJob?.job_id}
+              onOpenAuditReport={(jId) => handleOpenAuditReport(comparisonData || testResult?.single_run_data || testResult)}
+              onOpenDeviceArena={(url) => { setTestUrl(url); navigateToTab("battle_arena"); }}
+              onOpenGraph={() => navigateToTab("graph")}
+            />
+          )}
+
+          {/* ========================================================================= */}
+          {/* TAB: DEVICE BATTLE ARENA */}
+          {/* ========================================================================= */}
+          {activeTab === "battle_arena" && (
+            <DeviceBattleArena
+              initialUrl={testUrl}
+              onOpenAuditReport={(compId) => handleOpenAuditReport(comparisonData || testResult?.single_run_data || testResult)}
+              onOpenLiveArena={(jId) => { setLiveArenaJobId(jId); navigateToTab("live_arena"); }}
+            />
+          )}
+
+          {/* ========================================================================= */}
+          {/* TAB: AUDIT REPORTS */}
+          {/* ========================================================================= */}
           {activeTab === "reports" && (
-            <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm text-xs text-[#252525] space-y-4">
-              <h2 className="text-base font-bold text-[#252525]">Audit Reports & Verification Logs</h2>
-              <p className="text-[#6B6B65]">
-                Full system verification reports are archived in the repository root (TIERLENS_NEON_READINESS_REPORT.md, BUILD_STATUS.md).
-              </p>
-            </div>
+            <AuditReportsView
+              onSelectRunForReport={(r) => handleOpenAuditReport(r)}
+            />
           )}
 
         </div>
       </main>
+
+      {/* Global Interactive Audit Report Modal */}
+      {isAuditModalOpen && auditReportData && (
+        <AuditReportModal
+          isOpen={isAuditModalOpen}
+          onClose={() => setIsAuditModalOpen(false)}
+          reportData={auditReportData}
+        />
+      )}
+
+      {/* Global Visual Failure Evidence Lightbox */}
+      {isEvidenceModalOpen && (
+        <VisualEvidenceViewer
+          isOpen={isEvidenceModalOpen}
+          onClose={() => setIsEvidenceModalOpen(false)}
+          failures={evidenceFailures}
+          defaultScreenshotUrl={evidenceScreenshot}
+          deviceName={evidenceDeviceName}
+          targetUrl={testUrl}
+        />
+      )}
     </div>
   );
 }

@@ -44,6 +44,10 @@ class JobStatusResponse(BaseModel):
     comparison_data: Optional[Dict[str, Any]] = None
     single_run_data: Optional[Dict[str, Any]] = None
     recommendations: Optional[List[Dict[str, Any]]] = None
+    stage_id: Optional[int] = 1
+    stage_name: Optional[str] = "Browser Initialization"
+    logs: Optional[List[Dict[str, Any]]] = []
+    current_metrics: Optional[Dict[str, Any]] = None
 
 class JobStore:
     def __init__(self):
@@ -88,10 +92,48 @@ class JobStore:
                 "good_budget_run_id": None,
                 "entry_level_run_id": None,
                 "test_run_id": None,
-                "cancelled": False
+                "cancelled": False,
+                "stage_id": 1,
+                "stage_name": "Browser Initialization",
+                "logs": [
+                    {
+                        "timestamp": datetime.now(timezone.utc).strftime("%H:%M:%S"),
+                        "level": "INFO",
+                        "message": f"Job queued for target {target_url} in {mode} mode."
+                    }
+                ],
+                "current_metrics": {}
             }
             self._jobs[job_id] = record
             return record
+
+    async def append_log(
+        self,
+        job_id: str,
+        message: str,
+        level: str = "INFO",
+        stage_id: Optional[int] = None,
+        stage_name: Optional[str] = None,
+        metric: Optional[Dict[str, Any]] = None
+    ):
+        async with self._lock:
+            if job_id not in self._jobs:
+                return
+            rec = self._jobs[job_id]
+            if "logs" not in rec or rec["logs"] is None:
+                rec["logs"] = []
+            rec["logs"].append({
+                "timestamp": datetime.now(timezone.utc).strftime("%H:%M:%S"),
+                "level": level,
+                "message": message
+            })
+            if stage_id is not None:
+                rec["stage_id"] = stage_id
+            if stage_name is not None:
+                rec["stage_name"] = stage_name
+                rec["stage"] = stage_name
+            if metric and "current_metrics" in rec:
+                rec["current_metrics"][metric["name"]] = metric["value"]
 
     async def update_job(self, job_id: str, **kwargs) -> Optional[Dict[str, Any]]:
         async with self._lock:
@@ -171,7 +213,13 @@ class JobStore:
                         "good_budget_run_id": runs[0].id if len(runs) > 0 else None,
                         "entry_level_run_id": runs[1].id if len(runs) > 1 else None,
                         "test_run_id": first_run.id,
-                        "cancelled": first_run.status == "CANCELLED"
+                        "cancelled": first_run.status == "CANCELLED",
+                        "stage_id": 7 if first_run.status in ("COMPLETED", "COMPLETED_WITH_WARNINGS") else (1 if first_run.status == "FAILED" else 6),
+                        "stage_name": "Report & Graph Generation" if first_run.status in ("COMPLETED", "COMPLETED_WITH_WARNINGS") else first_run.status.capitalize(),
+                        "logs": [
+                            {"timestamp": first_run.created_at.strftime("%H:%M:%S") if first_run.created_at else "00:00:00", "level": "INFO", "message": f"Test run loaded from database ({first_run.status})."}
+                        ],
+                        "current_metrics": {}
                     }
                     async with self._lock:
                         self._jobs[job_id] = recovered_record
