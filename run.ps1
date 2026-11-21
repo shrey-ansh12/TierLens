@@ -4,6 +4,7 @@ param (
 
 $ErrorActionPreference = "Stop"
 $WorkspaceRoot = $PSScriptRoot
+$env:PYTHONPATH = "$WorkspaceRoot\backend"
 
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host "   TIERLENS - Application Performance and Device Intelligence" -ForegroundColor Cyan
@@ -35,7 +36,6 @@ if (-not $PythonExe) {
 
 if ($Mode -eq "test") {
     Write-Host "`n[+] Executing Automated Backend Pytest Suite..." -ForegroundColor Yellow
-    $env:PYTHONPATH = "$WorkspaceRoot\backend"
     & $PythonExe -m pytest "$WorkspaceRoot\backend\tests" -q
     exit $LASTEXITCODE
 }
@@ -51,8 +51,8 @@ if ($Mode -eq "backend" -or $Mode -eq "all") {
 
 if ($Mode -eq "frontend" -or $Mode -eq "all") {
     Write-Host "`n[+] Starting Next.js Frontend on http://localhost:3000..." -ForegroundColor Green
-    $FrontendJob = Start-Process -FilePath "npm.cmd" `
-        -ArgumentList "run", "dev" `
+    $FrontendJob = Start-Process -FilePath "cmd.exe" `
+        -ArgumentList "/c", "npm.cmd", "run", "dev" `
         -WorkingDirectory "$WorkspaceRoot\frontend" `
         -PassThru
     Write-Host "    Frontend Process ID: $($FrontendJob.Id)" -ForegroundColor DarkGray
