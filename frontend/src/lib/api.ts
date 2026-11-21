@@ -1,15 +1,21 @@
-export const getApiBase = (): string => {
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, "");
-  }
+function getApiBase(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
   if (typeof window !== "undefined") {
-    // If running in browser on a production domain (e.g. Vercel)
-    if (window.location.protocol === "https:" && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1")) {
+    // When running on HTTPS (production Vercel / Cloud), always route to the live Render backend
+    // to prevent browser Mixed Content (HTTPS -> HTTP) blocking and connection refused errors
+    if (window.location.protocol === "https:") {
+      if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
+        return envUrl.replace(/\/+$/, "");
+      }
       return "https://tierlens.onrender.com";
     }
+    // If running in browser on localhost
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      return (envUrl || "http://localhost:8000").replace(/\/+$/, "");
+    }
   }
-  return "http://localhost:8000";
-};
+  return (envUrl || "https://tierlens.onrender.com").replace(/\/+$/, "");
+}
 
 export class ApiClient {
   private static token: string | null = null;
@@ -54,18 +60,18 @@ export class ApiClient {
       headers["Content-Type"] = "application/json";
     }
 
-    const baseUrl = getApiBase();
+    const base = getApiBase();
     let res: Response;
     try {
-      res = await fetch(`${baseUrl}${endpoint}`, {
+      res = await fetch(`${base}${endpoint}`, {
         ...options,
         headers,
       });
     } catch (netErr: any) {
-      console.error(`Network fetch failed for ${baseUrl}${endpoint}:`, netErr);
+      console.error(`Network fetch failed for ${base}${endpoint}:`, netErr);
       throw new Error(
-        `Unable to connect to TierLens API server at ${baseUrl}. ` +
-        `If running locally, start the backend via .\\run.ps1. If deployed, verify ${baseUrl}/health.`
+        `Unable to connect to TierLens API server at ${base}. ` +
+        `If running locally, start the backend via .\\run.ps1. If deployed, verify ${base}/health.`
       );
     }
 
@@ -77,7 +83,7 @@ export class ApiClient {
         if (reauth && reauth.access_token) {
           this.setToken(reauth.access_token);
           headers["Authorization"] = `Bearer ${reauth.access_token}`;
-          const retryRes = await fetch(`${baseUrl}${endpoint}`, {
+          const retryRes = await fetch(`${base}${endpoint}`, {
             ...options,
             headers,
           });
