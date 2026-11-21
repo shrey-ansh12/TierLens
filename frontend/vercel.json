@@ -58,10 +58,6 @@
           "key": "X-XSS-Protection",
           "value": "0"
         }
-        {
-          "key": "Origin-Agent-Cluster",
-          "value": "?1"
-        }
       ]
     }
   ]
