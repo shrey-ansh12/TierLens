@@ -71,6 +71,11 @@ export default function IntelligenceExplorer() {
   const [stats, setStats] = useState<any>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
 
+  // Scoped Website / Project Filter
+  const [testedWebsites, setTestedWebsites] = useState<any[]>([]);
+  const [selectedWebsite, setSelectedWebsite] = useState<string>("ALL");
+  const [isLoadingWebsites, setIsLoadingWebsites] = useState(true);
+
   // Graph state
   const [graphData, setGraphData] = useState<{ nodes: Node[]; edges: Edge[]; connected: boolean }>({ nodes: [], edges: [], connected: true });
   const [isLoadingGraph, setIsLoadingGraph] = useState(false);
@@ -104,11 +109,29 @@ export default function IntelligenceExplorer() {
   const nodesRef = useRef<Node[]>([]);
   const edgesRef = useRef<Edge[]>([]);
 
+  // Fetch Projects List
+  const loadProjects = async () => {
+    setIsLoadingWebsites(true);
+    try {
+      const data = await ApiClient.getGraphProjects();
+      if (Array.isArray(data) && data.length > 0) {
+        setTestedWebsites(data);
+        // Default to the first website if currently ALL or empty
+        setSelectedWebsite((prev) => (prev === "ALL" || !prev ? (data[0].id || data[0].name) : prev));
+      }
+    } catch (e) {
+      console.error("Failed to load tested websites:", e);
+    } finally {
+      setIsLoadingWebsites(false);
+    }
+  };
+
   // Fetch Stats
-  const loadStats = async () => {
+  const loadStats = async (siteId?: string) => {
     setIsLoadingStats(true);
     try {
-      const data = await ApiClient.getGraphStats();
+      const target = siteId !== undefined ? siteId : selectedWebsite;
+      const data = await ApiClient.getGraphStats(target !== "ALL" ? target : undefined);
       setStats(data);
     } catch (e) {
       console.error("Failed to load graph stats:", e);
@@ -118,10 +141,12 @@ export default function IntelligenceExplorer() {
   };
 
   // Fetch Graph
-  const loadGraph = async () => {
+  const loadGraph = async (siteId?: string) => {
     setIsLoadingGraph(true);
     try {
+      const target = siteId !== undefined ? siteId : selectedWebsite;
       const data = await ApiClient.getExplorerGraph({
+        projectId: target !== "ALL" ? target : undefined,
         nodeType: nodeTypeFilter !== "ALL" ? nodeTypeFilter : undefined,
         search: searchQuery.trim() || undefined,
         limit: 120
@@ -139,10 +164,11 @@ export default function IntelligenceExplorer() {
   };
 
   // Fetch Failure Patterns
-  const loadFailurePatterns = async () => {
+  const loadFailurePatterns = async (siteId?: string) => {
     setIsLoadingPatterns(true);
     try {
-      const data = await ApiClient.getFailurePatterns();
+      const target = siteId !== undefined ? siteId : selectedWebsite;
+      const data = await ApiClient.getFailurePatterns(target !== "ALL" ? target : undefined);
       setFailurePatterns(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error("Failed to load failure patterns:", e);
@@ -152,10 +178,11 @@ export default function IntelligenceExplorer() {
   };
 
   // Fetch Device Impact
-  const loadDeviceImpact = async () => {
+  const loadDeviceImpact = async (siteId?: string) => {
     setIsLoadingImpact(true);
     try {
-      const data = await ApiClient.getDeviceImpact();
+      const target = siteId !== undefined ? siteId : selectedWebsite;
+      const data = await ApiClient.getDeviceImpact(target !== "ALL" ? target : undefined);
       setDeviceImpact(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error("Failed to load device impact:", e);
@@ -165,10 +192,11 @@ export default function IntelligenceExplorer() {
   };
 
   // Fetch Root Cause Chains
-  const loadRootCauses = async () => {
+  const loadRootCauses = async (siteId?: string) => {
     setIsLoadingRootCauses(true);
     try {
-      const data = await ApiClient.getRootCauseChains(50);
+      const target = siteId !== undefined ? siteId : selectedWebsite;
+      const data = await ApiClient.getRootCauseChains(50, target !== "ALL" ? target : undefined);
       setRootCauses(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error("Failed to load root causes:", e);
@@ -178,10 +206,12 @@ export default function IntelligenceExplorer() {
   };
 
   // Fetch Historical Runs
-  const loadHistoricalRuns = async () => {
+  const loadHistoricalRuns = async (siteId?: string) => {
     setIsLoadingHistorical(true);
     try {
+      const target = siteId !== undefined ? siteId : selectedWebsite;
       const data = await ApiClient.getHistoricalRuns({
+        projectId: target !== "ALL" ? target : undefined,
         status: historicalStatusFilter !== "ALL" ? historicalStatusFilter : undefined,
         limit: 30
       });
@@ -209,23 +239,32 @@ export default function IntelligenceExplorer() {
 
   // Initial load
   useEffect(() => {
-    loadStats();
-    loadGraph();
+    loadProjects();
   }, []);
+
+  // When selected website changes, re-fetch all active sections
+  useEffect(() => {
+    loadStats(selectedWebsite);
+    loadGraph(selectedWebsite);
+    if (activeTab === "patterns") loadFailurePatterns(selectedWebsite);
+    if (activeTab === "device_impact") loadDeviceImpact(selectedWebsite);
+    if (activeTab === "root_causes") loadRootCauses(selectedWebsite);
+    if (activeTab === "historical") loadHistoricalRuns(selectedWebsite);
+  }, [selectedWebsite]);
 
   // When changing tab, load relevant data
   useEffect(() => {
-    if (activeTab === "patterns" && failurePatterns.length === 0) loadFailurePatterns();
-    if (activeTab === "device_impact" && deviceImpact.length === 0) loadDeviceImpact();
-    if (activeTab === "root_causes" && rootCauses.length === 0) loadRootCauses();
-    if (activeTab === "historical") loadHistoricalRuns();
+    if (activeTab === "patterns") loadFailurePatterns(selectedWebsite);
+    if (activeTab === "device_impact") loadDeviceImpact(selectedWebsite);
+    if (activeTab === "root_causes") loadRootCauses(selectedWebsite);
+    if (activeTab === "historical") loadHistoricalRuns(selectedWebsite);
   }, [activeTab]);
 
   // When search or filter changes, reload graph
   useEffect(() => {
     if (activeTab === "graph") {
       const timeout = setTimeout(() => {
-        loadGraph();
+        loadGraph(selectedWebsite);
       }, 250);
       return () => clearTimeout(timeout);
     }
@@ -481,13 +520,34 @@ export default function IntelligenceExplorer() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Real Tested Website Selector */}
+            <div className="flex items-center gap-2 bg-[#FAF9F6] border border-[#E6E2D9] px-3 py-1.5 rounded-lg shadow-xs">
+              <Globe className="w-4 h-4 text-[#D97745]" />
+              <div className="flex flex-col">
+                <span className="text-[9px] text-[#6B6B65] font-semibold uppercase tracking-wider">Scoped Website</span>
+                <select
+                  value={selectedWebsite}
+                  onChange={(e) => setSelectedWebsite(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-[#252525] focus:outline-none cursor-pointer pr-1"
+                >
+                  {testedWebsites.map((w) => (
+                    <option key={w.id || w.name} value={w.id || w.name}>
+                      {w.name} ({w.test_runs_count} runs)
+                    </option>
+                  ))}
+                  <option value="ALL">All Tested Websites (Global)</option>
+                </select>
+              </div>
+            </div>
+
             <button
               onClick={() => {
-                loadStats();
-                loadGraph();
+                loadProjects();
+                loadStats(selectedWebsite);
+                loadGraph(selectedWebsite);
               }}
-              className="px-3.5 py-2 bg-[#EEECE5] hover:bg-[#EAE7DF] text-[#252525] font-medium text-xs rounded-lg border border-[#E6E2D9] transition-warm flex items-center gap-1.5"
+              className="px-3.5 py-2.5 bg-[#EEECE5] hover:bg-[#EAE7DF] text-[#252525] font-medium text-xs rounded-lg border border-[#E6E2D9] transition-warm flex items-center gap-1.5"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-[#D97745] ${isLoadingStats ? "animate-spin" : ""}`} />
               Refresh Graph

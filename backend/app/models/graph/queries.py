@@ -539,27 +539,50 @@ def _sanitize_neo4j_data(data: Any) -> Any:
     return str(data)
 
 
-async def get_graph_stats(db=None) -> Dict[str, Any]:
+async def get_graph_stats(db=None, project_id: Optional[str] = None) -> Dict[str, Any]:
     """
     Returns actual counts of Projects, Test Runs, Device Profiles, Metrics, Failures,
     Error Signatures, Root Causes, and Recommendations.
     Uses Neo4j Aura when connected; falls back cleanly to Neon PostgreSQL.
+    When project_id is provided, calculates strictly for that tested website/project.
     """
     health = await neo4j_manager.check_health()
     if health.get("connected"):
         try:
-            stats_cypher = """
-            OPTIONAL MATCH (p:Project) WITH count(p) AS projects
-            OPTIONAL MATCH (tr:TestRun) WITH projects, count(tr) AS test_runs
-            OPTIONAL MATCH (dp:DeviceProfile) WITH projects, test_runs, count(dp) AS device_profiles
-            OPTIONAL MATCH (m:Metric) WITH projects, test_runs, device_profiles, count(m) AS metrics
-            OPTIONAL MATCH (f:Failure) WITH projects, test_runs, device_profiles, metrics, count(f) AS failures
-            OPTIONAL MATCH (sig:ErrorSignature) WITH projects, test_runs, device_profiles, metrics, failures, count(sig) AS error_signatures
-            OPTIONAL MATCH (rc:RootCause) WITH projects, test_runs, device_profiles, metrics, failures, error_signatures, count(rc) AS root_causes
-            OPTIONAL MATCH (rec:Recommendation) WITH projects, test_runs, device_profiles, metrics, failures, error_signatures, root_causes, count(rec) AS recommendations
-            RETURN projects, test_runs, device_profiles, metrics, failures, error_signatures, root_causes, recommendations
-            """
-            res = await neo4j_manager.run_query(stats_cypher)
+            if project_id and project_id != "ALL":
+                stats_cypher = """
+                MATCH (p:Project) WHERE p.id = $project_id OR p.name = $project_id
+                OPTIONAL MATCH (p)-[:HAS_TEST]->(tr:TestRun)
+                OPTIONAL MATCH (tr)-[:USED_PROFILE]->(dp:DeviceProfile)
+                OPTIONAL MATCH (tr)-[:PRODUCED]->(m:Metric)
+                OPTIONAL MATCH (tr)-[:DETECTED]->(f:Failure)
+                OPTIONAL MATCH (f)-[:MATCHES]->(sig:ErrorSignature)
+                OPTIONAL MATCH (f)-[:INDICATES]->(rc:RootCause)
+                OPTIONAL MATCH (rc)-[:SUGGESTS]->(rec:Recommendation)
+                RETURN 1 AS projects,
+                       count(DISTINCT tr) AS test_runs,
+                       count(DISTINCT dp) AS device_profiles,
+                       count(DISTINCT m) AS metrics,
+                       count(DISTINCT f) AS failures,
+                       count(DISTINCT sig) AS error_signatures,
+                       count(DISTINCT rc) AS root_causes,
+                       count(DISTINCT rec) AS recommendations
+                """
+                res = await neo4j_manager.run_query(stats_cypher, {"project_id": project_id})
+            else:
+                stats_cypher = """
+                OPTIONAL MATCH (p:Project) WITH count(p) AS projects
+                OPTIONAL MATCH (tr:TestRun) WITH projects, count(tr) AS test_runs
+                OPTIONAL MATCH (dp:DeviceProfile) WITH projects, test_runs, count(dp) AS device_profiles
+                OPTIONAL MATCH (m:Metric) WITH projects, test_runs, device_profiles, count(m) AS metrics
+                OPTIONAL MATCH (f:Failure) WITH projects, test_runs, device_profiles, metrics, count(f) AS failures
+                OPTIONAL MATCH (sig:ErrorSignature) WITH projects, test_runs, device_profiles, metrics, failures, count(sig) AS error_signatures
+                OPTIONAL MATCH (rc:RootCause) WITH projects, test_runs, device_profiles, metrics, failures, error_signatures, count(rc) AS root_causes
+                OPTIONAL MATCH (rec:Recommendation) WITH projects, test_runs, device_profiles, metrics, failures, error_signatures, root_causes, count(rec) AS recommendations
+                RETURN projects, test_runs, device_profiles, metrics, failures, error_signatures, root_causes, recommendations
+                """
+                res = await neo4j_manager.run_query(stats_cypher)
+
             if res and len(res) > 0:
                 raw = res[0]
                 return {
@@ -580,8 +603,34 @@ async def get_graph_stats(db=None) -> Dict[str, Any]:
     # Fallback to Neon PostgreSQL counts
     if db:
         try:
-            from sqlalchemy import select, func, distinct
+            from sqlalchemy import select, func, distinct, or_
             from app.models.relational.entities import Project, TestRun, DeviceProfile, TestMetric, TestFailure, Recommendation
+            
+            if project_id and project_id != "ALL":
+                p_obj = (await db.execute(select(Project).where(or_(Project.id == project_id, Project.name == project_id)))).scalars().first()
+                if p_obj:
+                    tr_stmt = select(TestRun.id).where(TestRun.project_id == p_obj.id)
+                    run_ids = (await db.execute(tr_stmt)).scalars().all()
+                    
+                    tr_cnt = len(run_ids)
+                    dp_cnt = (await db.execute(select(func.count(distinct(TestRun.device_profile_id))).where(TestRun.project_id == p_obj.id))).scalar() or 0
+                    m_cnt = (await db.execute(select(func.count(TestMetric.id)).where(TestMetric.test_run_id.in_(run_ids)))).scalar() if run_ids else 0
+                    f_cnt = (await db.execute(select(func.count(TestFailure.id)).where(TestFailure.test_run_id.in_(run_ids)))).scalar() if run_ids else 0
+                    sig_cnt = (await db.execute(select(func.count(distinct(TestFailure.error_signature))).where(TestFailure.test_run_id.in_(run_ids)))).scalar() if run_ids else 0
+                    rec_cnt = (await db.execute(select(func.count(Recommendation.id)).where(Recommendation.test_run_id.in_(run_ids)))).scalar() if run_ids else 0
+                    
+                    return {
+                        "connected": False,
+                        "source": "Neon PostgreSQL",
+                        "projects": 1,
+                        "test_runs": tr_cnt,
+                        "device_profiles": dp_cnt,
+                        "metrics": m_cnt,
+                        "failures": f_cnt,
+                        "error_signatures": sig_cnt,
+                        "root_causes": rec_cnt,
+                        "recommendations": rec_cnt
+                    }
             
             p_cnt = (await db.execute(select(func.count(Project.id)))).scalar() or 0
             tr_cnt = (await db.execute(select(func.count(TestRun.id)))).scalar() or 0
@@ -623,88 +672,212 @@ async def get_explorer_graph(
 ) -> Dict[str, Any]:
     """
     Returns an interactive relationship graph for the Neo4j Intelligence Explorer.
+    When project_id is provided, scopes the graph strictly to that tested website.
     Supports node-type filtering and search queries.
     """
     health = await neo4j_manager.check_health()
     if health.get("connected"):
         try:
-            allowed_labels = ['Project', 'TestRun', 'DeviceProfile', 'Failure', 'ErrorSignature', 'RootCause', 'Recommendation', 'MarketSegment', 'NetworkCohort']
-            
-            cypher = """
-            MATCH (n)
-            WHERE any(l IN labels(n) WHERE l IN $allowed_labels)
-            """
-            params: Dict[str, Any] = {"allowed_labels": allowed_labels, "limit": limit}
-
-            if node_type and node_type != "ALL":
-                cypher += " AND $node_type IN labels(n)"
-                params["node_type"] = node_type
-
-            if search and search.strip():
-                cypher += " AND (toLower(coalesce(n.name, '')) CONTAINS toLower($search) OR toLower(coalesce(n.title, '')) CONTAINS toLower($search) OR toLower(coalesce(n.signature, '')) CONTAINS toLower($search))"
-                params["search"] = search.strip()
-
-            cypher += """
-            WITH n LIMIT $limit
-            OPTIONAL MATCH (n)-[r]->(m)
-            WHERE any(l IN labels(m) WHERE l IN $allowed_labels)
-            RETURN n, labels(n) AS n_labels, r, type(r) AS r_type, m, labels(m) AS m_labels
-            """
-
-            records = await neo4j_manager.run_query(cypher, params)
+            allowed_labels = ['Project', 'TestRun', 'DeviceProfile', 'Failure', 'ErrorSignature', 'RootCause', 'Recommendation', 'MarketSegment', 'NetworkCohort', 'Metric']
             nodes_dict = {}
             edges_list = []
 
-            for row in records:
-                n = row.get("n")
-                m = row.get("m")
-                r_type = row.get("r_type")
-                n_labels = row.get("n_labels") or ["Entity"]
-                m_labels = row.get("m_labels") or ["Entity"]
+            if project_id and project_id != "ALL":
+                cypher = """
+                MATCH (p:Project)
+                WHERE p.id = $project_id OR p.name = $project_id
+                OPTIONAL MATCH (p)-[r1:HAS_TEST]->(run:TestRun)
+                OPTIONAL MATCH (run)-[r2:USED_PROFILE]->(dp:DeviceProfile)
+                OPTIONAL MATCH (dp)-[r7:REPRESENTS_SEGMENT]->(seg:MarketSegment)
+                OPTIONAL MATCH (dp)-[r8:SUBJECT_TO_NETWORK]->(net:NetworkCohort)
+                OPTIONAL MATCH (run)-[r3:PRODUCED]->(m:Metric)
+                OPTIONAL MATCH (run)-[r4:DETECTED]->(fail:Failure)
+                OPTIONAL MATCH (fail)-[r5:MATCHES]->(sig:ErrorSignature)
+                OPTIONAL MATCH (fail)-[r9:IMPACTS_POPULATION]->(seg)
+                OPTIONAL MATCH (fail)-[r6:INDICATES]->(rc:RootCause)
+                OPTIONAL MATCH (rc)-[r10:SUGGESTS]->(rec:Recommendation)
+                RETURN p, run, dp, seg, net, m, fail, sig, rc, rec
+                LIMIT $limit
+                """
+                records = await neo4j_manager.run_query(cypher, {"project_id": project_id, "limit": limit})
 
-                if n:
-                    n_id = str(n.get("id") or n.get("signature") or n.get("name") or id(n))
-                    if n_id not in nodes_dict:
-                        nodes_dict[n_id] = {
-                            "id": n_id,
-                            "label": n_labels[0],
-                            "name": n.get("name") or n.get("title") or n.get("signature") or f"{n_labels[0]} {n_id[:6]}",
-                            "properties": _sanitize_neo4j_data(n)
+                def add_node(node_id: str, label: str, name: str, props: Dict[str, Any]):
+                    if node_id not in nodes_dict:
+                        if node_type and node_type != "ALL" and label != node_type:
+                            return False
+                        if search and search.strip():
+                            s = search.strip().lower()
+                            if s not in str(name).lower() and s not in str(props.get("title", "")).lower() and s not in str(props.get("signature", "")).lower():
+                                return False
+                        nodes_dict[node_id] = {
+                            "id": str(node_id),
+                            "label": label,
+                            "name": name,
+                            "properties": _sanitize_neo4j_data(props)
                         }
+                        return True
+                    return True
 
-                if m and r_type and n:
-                    m_id = str(m.get("id") or m.get("signature") or m.get("name") or id(m))
-                    if m_id not in nodes_dict:
-                        nodes_dict[m_id] = {
-                            "id": m_id,
-                            "label": m_labels[0],
-                            "name": m.get("name") or m.get("title") or m.get("signature") or f"{m_labels[0]} {m_id[:6]}",
-                            "properties": _sanitize_neo4j_data(m)
-                        }
+                for rec in records:
+                    p = rec.get("p")
+                    r = rec.get("run")
+                    dp = rec.get("dp")
+                    seg = rec.get("seg")
+                    net = rec.get("net")
+                    m = rec.get("m")
+                    fail = rec.get("fail")
+                    sig = rec.get("sig")
+                    rc = rec.get("rc")
+                    recom = rec.get("rec")
 
-                    edge_id = f"{n_id}_{r_type}_{m_id}"
-                    if not any(e["id"] == edge_id for e in edges_list):
-                        edges_list.append({
-                            "id": edge_id,
-                            "source": n_id,
-                            "target": m_id,
-                            "type": r_type
-                        })
+                    if p:
+                        add_node(str(p["id"]), "Project", p.get("name", "Project"), p)
+                    if r and p:
+                        add_node(str(r["id"]), "TestRun", f"Run {str(r['id'])[:8]}", r)
+                        if str(p["id"]) in nodes_dict and str(r["id"]) in nodes_dict:
+                            e_id = f"{p['id']}_HAS_TEST_{r['id']}"
+                            if not any(e["id"] == e_id for e in edges_list):
+                                edges_list.append({"id": e_id, "source": str(p["id"]), "target": str(r["id"]), "type": "HAS_TEST"})
+                    if dp and r:
+                        dp_id = str(dp.get("id") or f"dp_{dp.get('name')}")
+                        add_node(dp_id, "DeviceProfile", dp.get("name", "Profile"), dp)
+                        if str(r["id"]) in nodes_dict and dp_id in nodes_dict:
+                            e_id = f"{r['id']}_USED_PROFILE_{dp_id}"
+                            if not any(e["id"] == e_id for e in edges_list):
+                                edges_list.append({"id": e_id, "source": str(r["id"]), "target": dp_id, "type": "USED_PROFILE"})
+                        if seg:
+                            seg_id = f"seg_{seg['name']}"
+                            add_node(seg_id, "MarketSegment", f"{seg['name']} ({seg.get('share_pct', 0)}%)", seg)
+                            if dp_id in nodes_dict and seg_id in nodes_dict:
+                                e_id = f"{dp_id}_REPRESENTS_SEGMENT_{seg_id}"
+                                if not any(e["id"] == e_id for e in edges_list):
+                                    edges_list.append({"id": e_id, "source": dp_id, "target": seg_id, "type": "REPRESENTS_SEGMENT"})
+                        if net:
+                            net_id = f"net_{net['name']}"
+                            add_node(net_id, "NetworkCohort", f"{net['name']} ({net.get('share_pct', 0)}%)", net)
+                            if dp_id in nodes_dict and net_id in nodes_dict:
+                                e_id = f"{dp_id}_SUBJECT_TO_NETWORK_{net_id}"
+                                if not any(e["id"] == e_id for e in edges_list):
+                                    edges_list.append({"id": e_id, "source": dp_id, "target": net_id, "type": "SUBJECT_TO_NETWORK"})
+                    if m and r:
+                        m_id = f"m_{str(r['id'])[:6]}_{m.get('name')}"
+                        add_node(m_id, "Metric", f"{m.get('name')}: {m.get('value')}", m)
+                        if str(r["id"]) in nodes_dict and m_id in nodes_dict:
+                            e_id = f"{r['id']}_PRODUCED_{m_id}"
+                            if not any(e["id"] == e_id for e in edges_list):
+                                edges_list.append({"id": e_id, "source": str(r["id"]), "target": m_id, "type": "PRODUCED"})
+                    if fail and r:
+                        f_id = str(fail.get("id") or f"fail_{fail.get('signature', 'err')}_{str(r['id'])[:6]}")
+                        add_node(f_id, "Failure", fail.get("title", "Failure")[:30], fail)
+                        if str(r["id"]) in nodes_dict and f_id in nodes_dict:
+                            e_id = f"{r['id']}_DETECTED_{f_id}"
+                            if not any(e["id"] == e_id for e in edges_list):
+                                edges_list.append({"id": e_id, "source": str(r["id"]), "target": f_id, "type": "DETECTED"})
+                        if sig:
+                            sig_id = f"sig_{sig.get('signature', 'unknown')}"
+                            add_node(sig_id, "ErrorSignature", f"Sig: {sig.get('signature', 'unknown')[:8]}", sig)
+                            if f_id in nodes_dict and sig_id in nodes_dict:
+                                e_id = f"{f_id}_MATCHES_{sig_id}"
+                                if not any(e["id"] == e_id for e in edges_list):
+                                    edges_list.append({"id": e_id, "source": f_id, "target": sig_id, "type": "MATCHES"})
+                        if rc:
+                            rc_id = str(rc.get("id") or f"rc_{rc.get('title', 'rc')[:15]}")
+                            add_node(rc_id, "RootCause", rc.get("title", "Root Cause")[:30], rc)
+                            if f_id in nodes_dict and rc_id in nodes_dict:
+                                e_id = f"{f_id}_INDICATES_{rc_id}"
+                                if not any(e["id"] == e_id for e in edges_list):
+                                    edges_list.append({"id": e_id, "source": f_id, "target": rc_id, "type": "INDICATES"})
+                            if recom:
+                                rec_id = str(recom.get("id") or f"rec_{recom.get('title', 'rec')[:15]}")
+                                add_node(rec_id, "Recommendation", recom.get("title", "Rec")[:30], recom)
+                                if rc_id in nodes_dict and rec_id in nodes_dict:
+                                    e_id = f"{rc_id}_SUGGESTS_{rec_id}"
+                                    if not any(e["id"] == e_id for e in edges_list):
+                                        edges_list.append({"id": e_id, "source": rc_id, "target": rec_id, "type": "SUGGESTS"})
 
-            return {
-                "nodes": list(nodes_dict.values()),
-                "edges": edges_list,
-                "connected": True,
-                "source": "Neo4j Aura",
-                "total_nodes": len(nodes_dict),
-                "total_edges": len(edges_list)
-            }
+                return {
+                    "nodes": list(nodes_dict.values()),
+                    "edges": edges_list,
+                    "connected": True,
+                    "source": "Neo4j Aura",
+                    "total_nodes": len(nodes_dict),
+                    "total_edges": len(edges_list)
+                }
+
+            else:
+                cypher = """
+                MATCH (n)
+                WHERE any(l IN labels(n) WHERE l IN $allowed_labels)
+                """
+                params: Dict[str, Any] = {"allowed_labels": allowed_labels, "limit": limit}
+
+                if node_type and node_type != "ALL":
+                    cypher += " AND $node_type IN labels(n)"
+                    params["node_type"] = node_type
+
+                if search and search.strip():
+                    cypher += " AND (toLower(coalesce(n.name, '')) CONTAINS toLower($search) OR toLower(coalesce(n.title, '')) CONTAINS toLower($search) OR toLower(coalesce(n.signature, '')) CONTAINS toLower($search))"
+                    params["search"] = search.strip()
+
+                cypher += """
+                WITH n LIMIT $limit
+                OPTIONAL MATCH (n)-[r]->(m)
+                WHERE any(l IN labels(m) WHERE l IN $allowed_labels)
+                RETURN n, labels(n) AS n_labels, r, type(r) AS r_type, m, labels(m) AS m_labels
+                """
+
+                records = await neo4j_manager.run_query(cypher, params)
+
+                for row in records:
+                    n = row.get("n")
+                    m = row.get("m")
+                    r_type = row.get("r_type")
+                    n_labels = row.get("n_labels") or ["Entity"]
+                    m_labels = row.get("m_labels") or ["Entity"]
+
+                    if n:
+                        n_id = str(n.get("id") or n.get("signature") or n.get("name") or id(n))
+                        if n_id not in nodes_dict:
+                            nodes_dict[n_id] = {
+                                "id": n_id,
+                                "label": n_labels[0],
+                                "name": n.get("name") or n.get("title") or n.get("signature") or f"{n_labels[0]} {n_id[:6]}",
+                                "properties": _sanitize_neo4j_data(n)
+                            }
+
+                    if m and r_type and n:
+                        m_id = str(m.get("id") or m.get("signature") or m.get("name") or id(m))
+                        if m_id not in nodes_dict:
+                            nodes_dict[m_id] = {
+                                "id": m_id,
+                                "label": m_labels[0],
+                                "name": m.get("name") or m.get("title") or m.get("signature") or f"{m_labels[0]} {m_id[:6]}",
+                                "properties": _sanitize_neo4j_data(m)
+                            }
+
+                        edge_id = f"{n_id}_{r_type}_{m_id}"
+                        if not any(e["id"] == edge_id for e in edges_list):
+                            edges_list.append({
+                                "id": edge_id,
+                                "source": n_id,
+                                "target": m_id,
+                                "type": r_type
+                            })
+
+                return {
+                    "nodes": list(nodes_dict.values()),
+                    "edges": edges_list,
+                    "connected": True,
+                    "source": "Neo4j Aura",
+                    "total_nodes": len(nodes_dict),
+                    "total_edges": len(edges_list)
+                }
         except Exception as e:
             logger.warning(f"Neo4j explorer graph query failed: {e}")
 
     # Fallback to PostgreSQL
     if db:
-        if project_id:
+        if project_id and project_id != "ALL":
             return await get_fallback_graph_from_postgres(project_id, db)
         else:
             from sqlalchemy import select
@@ -717,32 +890,52 @@ async def get_explorer_graph(
     return {"nodes": [], "edges": [], "connected": False, "source": "Unavailable"}
 
 
-async def get_failure_patterns(db=None) -> List[Dict[str, Any]]:
+async def get_failure_patterns(db=None, project_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Identifies repeated failure signatures across historical test runs, grouping
     failures by their error signature and computing occurrence frequency and impact.
+    When project_id is provided, filters strictly for that tested website.
     """
     health = await neo4j_manager.check_health()
     if health.get("connected"):
         try:
-            cypher = """
-            MATCH (fail:Failure)-[:MATCHES]->(sig:ErrorSignature)
-            OPTIONAL MATCH (run:TestRun)-[:DETECTED]->(fail)
-            OPTIONAL MATCH (proj:Project)-[:HAS_TEST]->(run)
-            OPTIONAL MATCH (run)-[:USED_PROFILE]->(dp:DeviceProfile)
-            OPTIONAL MATCH (fail)-[:INDICATES]->(rc:RootCause)-[:SUGGESTS]->(rec:Recommendation)
-            RETURN 
-                sig.signature AS signature,
-                coalesce(sig.title, fail.title) AS title,
-                count(DISTINCT fail) AS frequency,
-                collect(DISTINCT proj.name) AS affected_projects,
-                collect(DISTINCT dp.name) AS affected_device_profiles,
-                collect(DISTINCT fail.type) AS failure_types,
-                collect(DISTINCT rc.probable_cause)[..2] AS sample_root_causes,
-                collect(DISTINCT rec.remediation)[..2] AS sample_remediations
-            ORDER BY frequency DESC
-            """
-            records = await neo4j_manager.run_query(cypher)
+            if project_id and project_id != "ALL":
+                cypher = """
+                MATCH (proj:Project)-[:HAS_TEST]->(run:TestRun)-[:DETECTED]->(fail:Failure)-[:MATCHES]->(sig:ErrorSignature)
+                WHERE proj.id = $project_id OR proj.name = $project_id
+                OPTIONAL MATCH (run)-[:USED_PROFILE]->(dp:DeviceProfile)
+                OPTIONAL MATCH (fail)-[:INDICATES]->(rc:RootCause)-[:SUGGESTS]->(rec:Recommendation)
+                RETURN 
+                    sig.signature AS signature,
+                    coalesce(sig.title, fail.title) AS title,
+                    count(DISTINCT fail) AS frequency,
+                    collect(DISTINCT proj.name) AS affected_projects,
+                    collect(DISTINCT dp.name) AS affected_device_profiles,
+                    collect(DISTINCT fail.type) AS failure_types,
+                    collect(DISTINCT rc.probable_cause)[..2] AS sample_root_causes,
+                    collect(DISTINCT rec.remediation)[..2] AS sample_remediations
+                ORDER BY frequency DESC
+                """
+                records = await neo4j_manager.run_query(cypher, {"project_id": project_id})
+            else:
+                cypher = """
+                MATCH (fail:Failure)-[:MATCHES]->(sig:ErrorSignature)
+                OPTIONAL MATCH (run:TestRun)-[:DETECTED]->(fail)
+                OPTIONAL MATCH (proj:Project)-[:HAS_TEST]->(run)
+                OPTIONAL MATCH (run)-[:USED_PROFILE]->(dp:DeviceProfile)
+                OPTIONAL MATCH (fail)-[:INDICATES]->(rc:RootCause)-[:SUGGESTS]->(rec:Recommendation)
+                RETURN 
+                    sig.signature AS signature,
+                    coalesce(sig.title, fail.title) AS title,
+                    count(DISTINCT fail) AS frequency,
+                    collect(DISTINCT proj.name) AS affected_projects,
+                    collect(DISTINCT dp.name) AS affected_device_profiles,
+                    collect(DISTINCT fail.type) AS failure_types,
+                    collect(DISTINCT rc.probable_cause)[..2] AS sample_root_causes,
+                    collect(DISTINCT rec.remediation)[..2] AS sample_remediations
+                ORDER BY frequency DESC
+                """
+                records = await neo4j_manager.run_query(cypher)
             return _sanitize_neo4j_data(records)
         except Exception as e:
             logger.warning(f"Neo4j failure patterns query failed: {e}")
@@ -750,7 +943,7 @@ async def get_failure_patterns(db=None) -> List[Dict[str, Any]]:
     # Fallback to PostgreSQL
     if db:
         try:
-            from sqlalchemy import select, func
+            from sqlalchemy import select, func, or_
             from app.models.relational.entities import TestFailure, TestRun, Project, DeviceProfile
             
             stmt = (
@@ -765,9 +958,10 @@ async def get_failure_patterns(db=None) -> List[Dict[str, Any]]:
                 .join(TestRun, TestFailure.test_run_id == TestRun.id)
                 .outerjoin(Project, TestRun.project_id == Project.id)
                 .outerjoin(DeviceProfile, TestRun.device_profile_id == DeviceProfile.id)
-                .group_by(TestFailure.error_signature)
-                .order_by(func.count(TestFailure.id).desc())
             )
+            if project_id and project_id != "ALL":
+                stmt = stmt.where(or_(Project.id == project_id, Project.name == project_id))
+            stmt = stmt.group_by(TestFailure.error_signature).order_by(func.count(TestFailure.id).desc())
             res = await db.execute(stmt)
             patterns = []
             for r in res:
@@ -788,30 +982,51 @@ async def get_failure_patterns(db=None) -> List[Dict[str, Any]]:
     return []
 
 
-async def get_device_impact(db=None) -> List[Dict[str, Any]]:
+async def get_device_impact(db=None, project_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Returns comparative performance metrics and failure distributions across device profiles.
+    When project_id is provided, scopes impact strictly to that tested website.
     """
     health = await neo4j_manager.check_health()
     if health.get("connected"):
         try:
-            cypher = """
-            MATCH (dp:DeviceProfile)
-            OPTIONAL MATCH (run:TestRun)-[:USED_PROFILE]->(dp)
-            OPTIONAL MATCH (run)-[:DETECTED]->(fail:Failure)
-            RETURN 
-                dp.id AS id,
-                dp.name AS name,
-                dp.tier AS tier,
-                dp.cpu_throttle_rate AS cpu_throttle_rate,
-                dp.ram_mb AS ram_mb,
-                dp.network_profile AS network_profile,
-                count(DISTINCT run) AS test_run_count,
-                count(DISTINCT fail) AS failure_count,
-                collect(DISTINCT fail.title)[..3] AS sample_failures
-            ORDER BY failure_count DESC
-            """
-            records = await neo4j_manager.run_query(cypher)
+            if project_id and project_id != "ALL":
+                cypher = """
+                MATCH (dp:DeviceProfile)
+                MATCH (proj:Project)-[:HAS_TEST]->(run:TestRun)-[:USED_PROFILE]->(dp)
+                WHERE proj.id = $project_id OR proj.name = $project_id
+                OPTIONAL MATCH (run)-[:DETECTED]->(fail:Failure)
+                RETURN 
+                    dp.id AS id,
+                    dp.name AS name,
+                    dp.tier AS tier,
+                    dp.cpu_throttle_rate AS cpu_throttle_rate,
+                    dp.ram_mb AS ram_mb,
+                    dp.network_profile AS network_profile,
+                    count(DISTINCT run) AS test_run_count,
+                    count(DISTINCT fail) AS failure_count,
+                    collect(DISTINCT fail.title)[..3] AS sample_failures
+                ORDER BY failure_count DESC
+                """
+                records = await neo4j_manager.run_query(cypher, {"project_id": project_id})
+            else:
+                cypher = """
+                MATCH (dp:DeviceProfile)
+                OPTIONAL MATCH (run:TestRun)-[:USED_PROFILE]->(dp)
+                OPTIONAL MATCH (run)-[:DETECTED]->(fail:Failure)
+                RETURN 
+                    dp.id AS id,
+                    dp.name AS name,
+                    dp.tier AS tier,
+                    dp.cpu_throttle_rate AS cpu_throttle_rate,
+                    dp.ram_mb AS ram_mb,
+                    dp.network_profile AS network_profile,
+                    count(DISTINCT run) AS test_run_count,
+                    count(DISTINCT fail) AS failure_count,
+                    collect(DISTINCT fail.title)[..3] AS sample_failures
+                ORDER BY failure_count DESC
+                """
+                records = await neo4j_manager.run_query(cypher)
             return _sanitize_neo4j_data(records)
         except Exception as e:
             logger.warning(f"Neo4j device impact query failed: {e}")
@@ -819,8 +1034,8 @@ async def get_device_impact(db=None) -> List[Dict[str, Any]]:
     # Fallback to PostgreSQL
     if db:
         try:
-            from sqlalchemy import select, func
-            from app.models.relational.entities import DeviceProfile, TestRun, TestFailure
+            from sqlalchemy import select, func, or_
+            from app.models.relational.entities import DeviceProfile, TestRun, TestFailure, Project
             stmt = (
                 select(
                     DeviceProfile.id,
@@ -834,8 +1049,12 @@ async def get_device_impact(db=None) -> List[Dict[str, Any]]:
                 )
                 .outerjoin(TestRun, DeviceProfile.id == TestRun.device_profile_id)
                 .outerjoin(TestFailure, TestRun.id == TestFailure.test_run_id)
-                .group_by(DeviceProfile.id)
             )
+            if project_id and project_id != "ALL":
+                stmt = stmt.outerjoin(Project, TestRun.project_id == Project.id).where(
+                    or_(Project.id == project_id, Project.name == project_id)
+                )
+            stmt = stmt.group_by(DeviceProfile.id)
             res = await db.execute(stmt)
             devices = []
             for r in res:
@@ -857,7 +1076,177 @@ async def get_device_impact(db=None) -> List[Dict[str, Any]]:
     return []
 
 
-async def get_root_cause_chains(limit: int = 50, db=None) -> List[Dict[str, Any]]:
+async def get_root_cause_chains(limit: int = 50, db=None, project_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """
+    Traces verified relationship chains:
+    Project -> TestRun -> Failure -> ErrorSignature -> RootCause -> Recommendation
+    When project_id is provided, filters chains for that tested website.
+    """
+    health = await neo4j_manager.check_health()
+    if health.get("connected"):
+        try:
+            if project_id and project_id != "ALL":
+                cypher = """
+                MATCH (proj:Project)-[:HAS_TEST]->(run:TestRun)-[:DETECTED]->(fail:Failure)-[:INDICATES]->(rc:RootCause)-[:SUGGESTS]->(rec:Recommendation)
+                WHERE proj.id = $project_id OR proj.name = $project_id
+                OPTIONAL MATCH (run)-[:USED_PROFILE]->(dp:DeviceProfile)
+                OPTIONAL MATCH (fail)-[:MATCHES]->(sig:ErrorSignature)
+                RETURN 
+                    proj.name AS project_name,
+                    run.id AS test_run_id,
+                    dp.name AS device_profile_name,
+                    fail.id AS failure_id,
+                    fail.title AS failure_title,
+                    fail.type AS failure_type,
+                    sig.signature AS signature,
+                    rc.id AS root_cause_id,
+                    rc.probable_cause AS probable_cause,
+                    rc.category AS category,
+                    rc.confidence AS confidence,
+                    rec.id AS recommendation_id,
+                    rec.title AS recommendation_title,
+                    rec.remediation AS remediation,
+                    rec.impact AS impact,
+                    rec.status AS status
+                LIMIT $limit
+                """
+                records = await neo4j_manager.run_query(cypher, {"project_id": project_id, "limit": limit})
+            else:
+                cypher = """
+                MATCH (proj:Project)-[:HAS_TEST]->(run:TestRun)-[:DETECTED]->(fail:Failure)-[:INDICATES]->(rc:RootCause)-[:SUGGESTS]->(rec:Recommendation)
+                OPTIONAL MATCH (run)-[:USED_PROFILE]->(dp:DeviceProfile)
+                OPTIONAL MATCH (fail)-[:MATCHES]->(sig:ErrorSignature)
+                RETURN 
+                    proj.name AS project_name,
+                    run.id AS test_run_id,
+                    dp.name AS device_profile_name,
+                    fail.id AS failure_id,
+                    fail.title AS failure_title,
+                    fail.type AS failure_type,
+                    sig.signature AS signature,
+                    rc.id AS root_cause_id,
+                    rc.probable_cause AS probable_cause,
+                    rc.category AS category,
+                    rc.confidence AS confidence,
+                    rec.id AS recommendation_id,
+                    rec.title AS recommendation_title,
+                    rec.remediation AS remediation,
+                    rec.impact AS impact,
+                    rec.status AS status
+                LIMIT $limit
+                """
+                records = await neo4j_manager.run_query(cypher, {"limit": limit})
+            return _sanitize_neo4j_data(records)
+        except Exception as e:
+            logger.warning(f"Neo4j root cause chains query failed: {e}")
+
+    # Fallback to PostgreSQL
+    if db:
+        try:
+            from sqlalchemy import select, or_
+            from app.models.relational.entities import Recommendation, TestFailure, TestRun, Project, DeviceProfile
+            stmt = (
+                select(
+                    Project.name.label("project_name"),
+                    TestRun.id.label("test_run_id"),
+                    DeviceProfile.name.label("device_profile_name"),
+                    TestFailure.id.label("failure_id"),
+                    TestFailure.title.label("failure_title"),
+                    TestFailure.failure_type.label("failure_type"),
+                    TestFailure.error_signature.label("signature"),
+                    Recommendation.id.label("root_cause_id"),
+                    Recommendation.explanation.label("probable_cause"),
+                    Recommendation.category.label("category"),
+                    Recommendation.title.label("recommendation_title"),
+                    Recommendation.action.label("remediation"),
+                    Recommendation.estimated_impact.label("impact"),
+                    Recommendation.status.label("status")
+                )
+                .join(TestRun, Recommendation.test_run_id == TestRun.id)
+                .outerjoin(Project, TestRun.project_id == Project.id)
+                .outerjoin(DeviceProfile, TestRun.device_profile_id == DeviceProfile.id)
+                .outerjoin(TestFailure, TestFailure.test_run_id == TestRun.id)
+            )
+            if project_id and project_id != "ALL":
+                stmt = stmt.where(or_(Project.id == project_id, Project.name == project_id))
+            stmt = stmt.limit(limit)
+            res = await db.execute(stmt)
+            chains = []
+            for r in res:
+                chains.append({
+                    "project_name": r.project_name or "Web Application",
+                    "test_run_id": str(r.test_run_id),
+                    "device_profile_name": r.device_profile_name or "Generic Device",
+                    "failure_id": str(r.failure_id or ""),
+                    "failure_title": r.failure_title or "Anomaly Detected",
+                    "failure_type": r.failure_type or "PERFORMANCE",
+                    "signature": r.signature or "SIG_UNKNOWN",
+                    "root_cause_id": f"rc_{r.root_cause_id}",
+                    "probable_cause": r.probable_cause or "High latency subresource contention",
+                    "category": r.category or "LATENCY",
+                    "confidence": 0.92,
+                    "recommendation_id": f"rec_{r.root_cause_id}",
+                    "recommendation_title": r.recommendation_title or "Optimize Asset Delivery",
+                    "remediation": r.remediation or "Enable Brotli/Gzip and configure CDN edge caching",
+                    "impact": r.impact or "Reduces TTFB by ~45%",
+                    "status": r.status or "VERIFIED"
+                })
+            return chains
+        except Exception as e:
+            logger.error(f"PostgreSQL root cause fallback failed: {e}")
+
+    return []
+
+
+async def get_distinct_graph_projects(db=None) -> List[Dict[str, Any]]:
+    """
+    Returns distinct tested websites/projects available in the Neo4j knowledge graph.
+    """
+    health = await neo4j_manager.check_health()
+    if health.get("connected"):
+        try:
+            cypher = """
+            MATCH (p:Project)
+            OPTIONAL MATCH (p)-[:HAS_TEST]->(run:TestRun)
+            RETURN 
+                p.id AS id,
+                p.name AS name,
+                p.target_url AS target_url,
+                count(DISTINCT run) AS test_runs_count
+            ORDER BY test_runs_count DESC
+            """
+            records = await neo4j_manager.run_query(cypher)
+            sanitized = _sanitize_neo4j_data(records)
+            return [r for r in sanitized if r.get("name")]
+        except Exception as e:
+            logger.warning(f"Neo4j get_distinct_graph_projects failed: {e}")
+
+    if db:
+        try:
+            from app.models.relational.entities import Project, TestRun
+            from sqlalchemy import select, func
+            stmt = (
+                select(
+                    Project.id,
+                    Project.name,
+                    Project.target_url,
+                    func.count(TestRun.id).label("test_runs_count")
+                )
+                .outerjoin(TestRun, TestRun.project_id == Project.id)
+                .group_by(Project.id, Project.name, Project.target_url)
+                .order_by(func.count(TestRun.id).desc())
+            )
+            res = await db.execute(stmt)
+            return [{
+                "id": str(r[0]),
+                "name": r[1],
+                "target_url": r[2] or f"https://{r[1]}",
+                "test_runs_count": r[3]
+            } for r in res.all()]
+        except Exception as e:
+            logger.error(f"PostgreSQL distinct projects query failed: {e}")
+
+    return []
     """
     Traces verified relationship chains:
     Project -> TestRun -> Failure -> ErrorSignature -> RootCause -> Recommendation

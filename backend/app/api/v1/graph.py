@@ -12,7 +12,8 @@ from app.models.graph.queries import (
     get_device_impact,
     get_root_cause_chains,
     get_historical_runs_graph,
-    get_node_details
+    get_node_details,
+    get_distinct_graph_projects
 )
 
 router = APIRouter(prefix="/graph", tags=["Neo4j Intelligence Graph"])
@@ -25,14 +26,24 @@ async def get_graph_status():
     return health
 
 
+@router.get("/projects")
+async def get_tested_graph_projects(db: AsyncSession = Depends(get_db)):
+    """Returns distinct tested websites/projects stored in Neo4j knowledge graph."""
+    return await get_distinct_graph_projects(db)
+
+
 @router.get("/stats")
-async def get_intelligence_stats(db: AsyncSession = Depends(get_db)):
+async def get_intelligence_stats(
+    project_id: Optional[str] = Query(None, description="Optional project filter"),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Returns actual counts of Projects, Test Runs, Device Profiles, Metrics, Failures,
     Error Signatures, Root Causes, and Recommendations.
     Calculated from real database records (Neo4j Aura with PostgreSQL fallback).
+    When project_id is provided, calculates strictly for that tested website.
     """
-    stats = await get_graph_stats(db)
+    stats = await get_graph_stats(db=db, project_id=project_id)
     return stats
 
 
@@ -59,27 +70,34 @@ async def get_interactive_explorer_graph(
 
 
 @router.get("/failure-patterns")
-async def get_recurring_failure_patterns(db: AsyncSession = Depends(get_db)):
+async def get_recurring_failure_patterns(
+    project_id: Optional[str] = Query(None, description="Optional project filter"),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Failure Pattern Explorer: Identifies repeated failure signatures across historical test runs,
     grouping failures by their error signature with frequency and affected environments.
     """
-    patterns = await get_failure_patterns(db)
+    patterns = await get_failure_patterns(db=db, project_id=project_id)
     return patterns
 
 
 @router.get("/device-impact")
-async def get_device_profile_impact(db: AsyncSession = Depends(get_db)):
+async def get_device_profile_impact(
+    project_id: Optional[str] = Query(None, description="Optional project filter"),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Device Impact Explorer: Evaluates how performance issues and failure distributions
     differ across device profiles (e.g., Sub-₹8,000 Budget vs Mid-Tier vs Flagship).
     """
-    impact_data = await get_device_impact(db)
+    impact_data = await get_device_impact(db=db, project_id=project_id)
     return impact_data
 
 
 @router.get("/root-causes")
 async def get_root_cause_recommendations(
+    project_id: Optional[str] = Query(None, description="Optional project filter"),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db)
 ):
@@ -87,7 +105,7 @@ async def get_root_cause_recommendations(
     Root Cause & Recommendation Explorer: Traces verified relationship chains:
     Project -> TestRun -> Failure -> ErrorSignature -> RootCause -> Recommendation
     """
-    chains = await get_root_cause_chains(limit=limit, db=db)
+    chains = await get_root_cause_chains(limit=limit, db=db, project_id=project_id)
     return chains
 
 

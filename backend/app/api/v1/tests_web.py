@@ -63,6 +63,18 @@ async def queue_web_test(
     if not project:
         from urllib.parse import urlparse
         domain = urlparse(payload.target_url).hostname or "Web Project"
+        # Check if project already exists for this domain or target_url
+        p_res = await db.execute(
+            select(Project).where(
+                Project.workspace_id == workspace_id,
+                (Project.target_url == payload.target_url) | (Project.name == domain)
+            )
+        )
+        project = p_res.scalars().first()
+
+    if not project:
+        from urllib.parse import urlparse
+        domain = urlparse(payload.target_url).hostname or "Web Project"
         project = Project(
             workspace_id=workspace_id,
             name=f"{domain}",

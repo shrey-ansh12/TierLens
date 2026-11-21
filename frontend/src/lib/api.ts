@@ -254,13 +254,18 @@ export class ApiClient {
     return this.request("/api/v1/graph/status");
   }
 
-  static getGraphStats() {
-    return this.request("/api/v1/graph/stats");
+  static getGraphProjects() {
+    return this.request("/api/v1/graph/projects");
+  }
+
+  static getGraphStats(projectId?: string) {
+    const q = projectId && projectId !== "ALL" ? `?project_id=${encodeURIComponent(projectId)}` : "";
+    return this.request(`/api/v1/graph/stats${q}`);
   }
 
   static getExplorerGraph(params: { projectId?: string; nodeType?: string; search?: string; limit?: number } = {}) {
     const q = new URLSearchParams();
-    if (params.projectId) q.set("project_id", params.projectId);
+    if (params.projectId && params.projectId !== "ALL") q.set("project_id", params.projectId);
     if (params.nodeType && params.nodeType !== "ALL") q.set("node_type", params.nodeType);
     if (params.search) q.set("search", params.search);
     if (params.limit) q.set("limit", String(params.limit));
@@ -268,16 +273,20 @@ export class ApiClient {
     return this.request(`/api/v1/graph/explorer${qs ? `?${qs}` : ""}`);
   }
 
-  static getFailurePatterns() {
-    return this.request("/api/v1/graph/failure-patterns");
+  static getFailurePatterns(projectId?: string) {
+    const q = projectId && projectId !== "ALL" ? `?project_id=${encodeURIComponent(projectId)}` : "";
+    return this.request(`/api/v1/graph/failure-patterns${q}`);
   }
 
-  static getDeviceImpact() {
-    return this.request("/api/v1/graph/device-impact");
+  static getDeviceImpact(projectId?: string) {
+    const q = projectId && projectId !== "ALL" ? `?project_id=${encodeURIComponent(projectId)}` : "";
+    return this.request(`/api/v1/graph/device-impact${q}`);
   }
 
-  static getRootCauseChains(limit: number = 50) {
-    return this.request(`/api/v1/graph/root-causes?limit=${limit}`);
+  static getRootCauseChains(limit: number = 50, projectId?: string) {
+    const q = new URLSearchParams({ limit: String(limit) });
+    if (projectId && projectId !== "ALL") q.set("project_id", projectId);
+    return this.request(`/api/v1/graph/root-causes?${q.toString()}`);
   }
 
   static getHistoricalRuns(params: { projectId?: string; status?: string; limit?: number } = {}) {
