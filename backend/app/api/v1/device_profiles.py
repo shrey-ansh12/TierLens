@@ -37,7 +37,10 @@ async def list_device_profiles(
                 DeviceProfile.workspace_id.is_(None),
                 DeviceProfile.workspace_id == ws.id
             ),
-            DeviceProfile.is_active.is_(True)
+            or_(
+                DeviceProfile.is_active.is_(True),
+                DeviceProfile.is_active.is_(None)
+            )
         )
         .order_by(DeviceProfile.is_custom.asc(), DeviceProfile.name.asc())
     )

@@ -417,17 +417,81 @@ export default function TierLensApp() {
     }
   };
 
+  const DEFAULT_FALLBACK_PROFILES: DeviceProfileData[] = [
+    {
+      id: "good-budget-default",
+      name: "Good Budget Tier (Galaxy A14 / Moto G)",
+      tier: "GOOD_BUDGET",
+      platform: "WEB",
+      device_type: "Smartphone",
+      cpu_cores: 4,
+      cpu_category: "Mid-Efficiency",
+      cpu_throttle_rate: 4.0,
+      cpu_slowdown_multiplier: 4.0,
+      storage_profile: "eMMC 5.1",
+      storage_capacity_gb: 64,
+      storage_available_gb: 32,
+      network_profile: "Fast 3G",
+      network_down_kbps: 1600,
+      network_up_kbps: 750,
+      network_latency_ms: 150,
+      network_packet_loss: 0,
+      viewport_width: 390,
+      viewport_height: 844,
+      device_scale_factor: 2.0,
+      is_mobile: true,
+      has_touch: true,
+      ram_mb: 4096,
+      is_custom: false
+    },
+    {
+      id: "entry-level-default",
+      name: "Entry-Level Tier (Redmi 9A / Nokia C)",
+      tier: "ENTRY_LEVEL",
+      platform: "WEB",
+      device_type: "Smartphone",
+      cpu_cores: 2,
+      cpu_category: "Low-Efficiency",
+      cpu_throttle_rate: 8.0,
+      cpu_slowdown_multiplier: 8.0,
+      storage_profile: "eMMC 5.1",
+      storage_capacity_gb: 32,
+      storage_available_gb: 12,
+      network_profile: "Slow 3G",
+      network_down_kbps: 400,
+      network_up_kbps: 400,
+      network_latency_ms: 400,
+      network_packet_loss: 0,
+      viewport_width: 360,
+      viewport_height: 800,
+      device_scale_factor: 2.0,
+      is_mobile: true,
+      has_touch: true,
+      ram_mb: 2048,
+      is_custom: false
+    }
+  ];
+
   const loadProfiles = async () => {
     try {
       const list = await ApiClient.listDeviceProfiles();
-      if (Array.isArray(list)) {
+      if (Array.isArray(list) && list.length > 0) {
         setSavedProfiles(list);
         if (selectedProfileIds.length === 0 && list.length >= 2) {
           setSelectedProfileIds([list[0].id, list[1].id]);
         }
+      } else {
+        setSavedProfiles(DEFAULT_FALLBACK_PROFILES);
+        if (selectedProfileIds.length === 0) {
+          setSelectedProfileIds([DEFAULT_FALLBACK_PROFILES[0].id, DEFAULT_FALLBACK_PROFILES[1].id]);
+        }
       }
     } catch (e) {
-      console.warn("Could not load device profiles:", e);
+      console.warn("Could not load device profiles, using fallback presets:", e);
+      setSavedProfiles(DEFAULT_FALLBACK_PROFILES);
+      if (selectedProfileIds.length === 0) {
+        setSelectedProfileIds([DEFAULT_FALLBACK_PROFILES[0].id, DEFAULT_FALLBACK_PROFILES[1].id]);
+      }
     }
   };
 

@@ -44,6 +44,27 @@ export class ApiClient {
       headers,
     });
 
+    if (res.status === 401 && !endpoint.includes("/auth/")) {
+      // Automatic token renewal on session expiry
+      this.clearToken();
+      try {
+        const reauth = await this.login({ email: "demo@tierlens.com", password: "Password123!" });
+        if (reauth && reauth.access_token) {
+          this.setToken(reauth.access_token);
+          headers["Authorization"] = `Bearer ${reauth.access_token}`;
+          const retryRes = await fetch(`${API_BASE}${endpoint}`, {
+            ...options,
+            headers,
+          });
+          if (retryRes.ok) {
+            return retryRes.json();
+          }
+        }
+      } catch (authErr) {
+        // Fall back to original error behavior
+      }
+    }
+
     if (!res.ok) {
       let errDetail = "Request failed";
       try {
