@@ -10,59 +10,27 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        paper: "#F3F2EE",
+        ink: "#0B0B0C",
+        signal: "#FF5A1F",
         background: "#F8FAFC",
         foreground: "#0F172A",
-        card: {
-          DEFAULT: "#FFFFFF",
-          foreground: "#0F172A",
-          border: "#E2E8F0",
-        },
-        popover: {
-          DEFAULT: "#FFFFFF",
-          foreground: "#0F172A",
-        },
-        primary: {
-          DEFAULT: "#2563EB", // Royal Blue
-          foreground: "#FFFFFF",
-          hover: "#1D4ED8",
-        },
-        secondary: {
-          DEFAULT: "#0284C7", // Sky Blue
-          foreground: "#FFFFFF",
-          hover: "#0369A1",
-        },
-        muted: {
-          DEFAULT: "#F1F5F9",
-          foreground: "#64748B",
-        },
-        accent: {
-          DEFAULT: "#F8FAFC",
-          foreground: "#0F172A",
-        },
-        destructive: {
-          DEFAULT: "#DC2626",
-          foreground: "#FFFFFF",
-        },
-        success: {
-          DEFAULT: "#16A34A",
-          foreground: "#FFFFFF",
-        },
-        warning: {
-          DEFAULT: "#D97706",
-          foreground: "#FFFFFF",
-        },
-        border: "#E2E8F0",
-        input: "#E2E8F0",
-        ring: "#2563EB",
+        primary: { DEFAULT: "#2563EB", foreground: "#FFFFFF", hover: "#1D4ED8" },
+        secondary: { DEFAULT: "#0284C7", foreground: "#FFFFFF", hover: "#0369A1" },
+        muted: { DEFAULT: "#F1F5F9", foreground: "#64748B" },
+        destructive: { DEFAULT: "#DC2626", foreground: "#FFFFFF" },
+        success: { DEFAULT: "#16A34A", foreground: "#FFFFFF" },
+        warning: { DEFAULT: "#D97706", foreground: "#FFFFFF" },
+      },
+      fontFamily: {
+        display: ["var(--font-display)", "Inter", "system-ui", "sans-serif"],
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        mono: ["var(--font-jetbrains)", "monospace"],
       },
       borderRadius: {
         lg: "0.5rem",
         md: "calc(0.5rem - 2px)",
         sm: "calc(0.5rem - 4px)",
-      },
-      fontFamily: {
-        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
-        mono: ["var(--font-jetbrains)", "monospace"],
       },
     },
   },
