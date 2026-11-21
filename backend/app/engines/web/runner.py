@@ -16,7 +16,7 @@ from playwright.async_api import (
 )
 
 from app.config import settings
-from app.engines.web.profiles import WEB_DEVICE_PROFILES
+from app.engines.web.profiles import WEB_DEVICE_PROFILES, resolve_device_profile_config
 from app.engines.web.metrics import calculate_vital_rating, WEB_VITALS_INJECTION_SCRIPT
 from app.engines.web.classifier import classify_navigation_error, ErrorCategory
 from app.core.security import validate_target_url, validate_redirect_url
@@ -45,11 +45,12 @@ class WebTestResult:
         self.network_requests: List[Dict[str, Any]] = []
         self.console_logs: List[Dict[str, Any]] = []
         self.is_synthetic: bool = False
+        self.configuration_snapshot: Optional[Dict[str, Any]] = None
 
 
 async def run_web_performance_test(
     target_url: str,
-    profile_key: str = "GOOD_BUDGET",
+    profile_input: Any = "GOOD_BUDGET",
     test_run_id: Optional[str] = None,
     timeout_seconds: Optional[int] = None
 ) -> WebTestResult:
@@ -58,11 +59,15 @@ async def run_web_performance_test(
     Supports a wide variety of public websites (SPA, MPA, redirects, slow networks).
     Accurately classifies errors and collects real Web Vitals without fabrication.
     """
+    profile = resolve_device_profile_config(profile_input)
+    profile_key = profile.get("tier", "CUSTOM")
+
     # 1. SSRF Safety Check
     try:
         safe_url = validate_target_url(target_url)
     except Exception as e:
         res = WebTestResult(profile_key, target_url)
+        res.configuration_snapshot = profile
         classified = classify_navigation_error(str(e))
         res.success = False
         res.error_category = ErrorCategory.ACCESS_RESTRICTION.value
@@ -78,16 +83,13 @@ async def run_web_performance_test(
         })
         return res
 
-    if profile_key not in WEB_DEVICE_PROFILES:
-        profile_key = "GOOD_BUDGET"
-    profile = WEB_DEVICE_PROFILES[profile_key]
-
     result = WebTestResult(profile_key, safe_url)
+    result.configuration_snapshot = profile
     run_id = test_run_id or str(uuid.uuid4())
     start_time = time.time()
     nav_timeout_ms = (timeout_seconds or getattr(settings, "WEB_TEST_TIMEOUT_SECONDS", 30)) * 1000
 
-    screenshot_filename = f"screenshot_{run_id}_{profile_key.lower()}.png"
+    screenshot_filename = f"screenshot_{run_id}_{profile_key.lower().replace('/', '_')}.png"
     screenshot_path = os.path.join(settings.ARTIFACTS_DIR, screenshot_filename)
 
     async with async_playwright() as p:
@@ -398,6 +400,7 @@ async def run_web_performance_test(
                     logger.warning(f"Failed to evaluate web vitals script: {eval_err}")
                     raw_vitals = {}
 
+                collection_ts = datetime.now(timezone.utc).isoformat()
                 metrics_specs = [
                     ("TTFB", raw_vitals.get("ttfb"), "ms"),
                     ("FCP", raw_vitals.get("fcp"), "ms"),
@@ -405,7 +408,17 @@ async def run_web_performance_test(
                     ("CLS", raw_vitals.get("cls"), "score"),
                     ("DOM_CONTENT_LOADED", raw_vitals.get("dom_content_loaded"), "ms"),
                     ("PAGE_LOAD_TIME", raw_vitals.get("page_load_time"), "ms"),
+                    ("TOTAL_RESOURCES", raw_vitals.get("total_resources"), "count"),
+                    ("TRANSFER_SIZE_KB", raw_vitals.get("transfer_size_kb"), "KB"),
+                    ("LONG_TASKS_COUNT", raw_vitals.get("long_task_count"), "count"),
+                    ("LONG_TASKS_DURATION", raw_vitals.get("long_task_duration_ms"), "ms"),
                 ]
+
+                # INP is only added if actual interactions occurred
+                if raw_vitals.get("inp") is not None:
+                    metrics_specs.append(("INP", raw_vitals.get("inp"), "ms"))
+                else:
+                    result.unavailable_metrics.append("INP (No user interactions triggered)")
 
                 for name, val, unit in metrics_specs:
                     if val is not None:
@@ -417,10 +430,17 @@ async def run_web_performance_test(
                             "rating": rating,
                             "available": True,
                             "is_emulated": True,
+                            "measurement_status": "MEASURED",
+                            "collected_at": collection_ts,
                             "details": {
                                 "device_profile": profile["name"],
+                                "device_type": profile.get("device_type", "Custom"),
+                                "cpu_cores": profile.get("cpu_cores", 4),
                                 "cpu_throttle_rate": profile["cpu_throttle_rate"],
+                                "network_profile": profile["network"].get("name", "Custom"),
                                 "network_latency_ms": profile["network"]["latency"],
+                                "ram_mb": profile.get("ram_mb", 4096),
+                                "storage_profile": profile.get("storage_profile", "Standard"),
                                 "disclaimer": profile["emulation_disclaimer"]
                             }
                         })

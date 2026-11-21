@@ -17,7 +17,7 @@ class Neo4jManager:
                 self._driver = AsyncGraphDatabase.driver(
                     settings.NEO4J_URI,
                     auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD),
-                    connection_timeout=3.0,
+                    connection_timeout=10.0,
                     max_connection_lifetime=300
                 )
                 # Verify connectivity

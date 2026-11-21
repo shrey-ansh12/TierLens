@@ -33,10 +33,12 @@ interface Props {
 
 const COLOR_MAP: Record<string, string> = {
   Application: "#2563EB",      // Blue
+  Project: "#2563EB",          // Blue
   TestRun: "#0284C7",          // Sky
   DeviceProfile: "#7C3AED",    // Purple
   Failure: "#DC2626",          // Red
   ErrorSignature: "#D97706",   // Amber
+  RootCause: "#EA580C",        // Orange
   Metric: "#16A34A",           // Emerald
   Recommendation: "#DB2777",   // Pink
 };

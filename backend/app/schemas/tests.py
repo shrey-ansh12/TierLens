@@ -1,11 +1,14 @@
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, HttpUrl
 from datetime import datetime
+from app.schemas.device_profiles import DeviceProfileResponse
 
 class WebTestSubmitRequest(BaseModel):
     project_id: Optional[str] = None
     target_url: str
-    tier: str = "BOTH" # "GOOD_BUDGET", "ENTRY_LEVEL", or "BOTH"
+    tier: Optional[str] = "BOTH" # "GOOD_BUDGET", "ENTRY_LEVEL", "BOTH", or custom tier name
+    device_profile_ids: Optional[List[str]] = None # List of profile IDs to execute
+    custom_profiles: Optional[List[Dict[str, Any]]] = None # List of dynamic profile specs to execute
     scenario_name: Optional[str] = "Full Page Load & Vitals"
     is_demo: bool = False
 
@@ -67,20 +70,6 @@ class RecommendationResponse(BaseModel):
     class Config:
         from_attributes = True
 
-class DeviceProfileResponse(BaseModel):
-    id: str
-    name: str
-    tier: str
-    platform: str
-    cpu_throttle_rate: float
-    network_profile: str
-    viewport_width: int
-    viewport_height: int
-    ram_mb: int
-
-    class Config:
-        from_attributes = True
-
 class TestRunResponse(BaseModel):
     id: str
     project_id: str
@@ -91,6 +80,7 @@ class TestRunResponse(BaseModel):
     duration_ms: int
     failure_count: int
     failure_summary: Optional[str] = None
+    configuration_snapshot: Optional[Dict[str, Any]] = None
     is_synthetic: bool
     device_profile: Optional[DeviceProfileResponse] = None
     metrics: List[MetricResponse] = []
@@ -108,8 +98,14 @@ class DualComparisonResponse(BaseModel):
     comparison_group_id: str
     good_budget_run: Optional[TestRunResponse] = None
     entry_level_run: Optional[TestRunResponse] = None
+    runs: Optional[List[TestRunResponse]] = None
+    configurations: Optional[List[Dict[str, Any]]] = None
+    best_configuration: Optional[Dict[str, Any]] = None
+    worst_configuration: Optional[Dict[str, Any]] = None
+    multi_metrics_diff: Optional[Dict[str, Dict[str, Any]]] = None
     metrics_diff: Dict[str, Dict[str, Any]] = {}
     regressions: List[Dict[str, Any]] = []
     device_specific_failures: List[Dict[str, Any]] = []
     recommendations: Optional[List[Dict[str, Any]]] = None
     root_cause_summary: Optional[Dict[str, Any]] = None
+    limitation_notice: Optional[str] = None

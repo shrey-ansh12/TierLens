@@ -12,6 +12,7 @@ from app.core.redis_client import redis_manager
 
 from app.api.v1.auth import router as auth_router
 from app.api.v1.projects import router as projects_router
+from app.api.v1.device_profiles import router as device_profiles_router
 from app.api.v1.tests_web import router as tests_web_router
 from app.api.v1.tests_android import router as tests_android_router
 from app.api.v1.comparisons import router as comparisons_router
@@ -97,6 +98,7 @@ app.mount("/artifacts", StaticFiles(directory=settings.ARTIFACTS_DIR), name="art
 # Register API Routers
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(projects_router, prefix="/api/v1")
+app.include_router(device_profiles_router, prefix="/api/v1")
 app.include_router(tests_web_router, prefix="/api/v1")
 app.include_router(tests_android_router, prefix="/api/v1")
 app.include_router(comparisons_router, prefix="/api/v1")

@@ -2,7 +2,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 import uuid
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from app.config import settings
 from app.core.database import AsyncSessionLocal
@@ -14,9 +14,10 @@ from app.models.relational.entities import (
     Recommendation, TestStatus, Project, ProjectType
 )
 from app.engines.web.runner import run_web_performance_test
+from app.engines.web.profiles import resolve_device_profile_config
 from app.intelligence.rca_engine import generate_root_cause_analysis
 from app.models.graph.queries import sync_run_to_neo4j
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.orm import selectinload
 
 logger = logging.getLogger(__name__)
@@ -24,18 +25,39 @@ logger = logging.getLogger(__name__)
 
 async def _execute_single_tier(
     target_url: str,
-    tier_key: str,
+    profile_item: Any,
     project_id: str,
     comparison_group_id: Optional[str],
     workspace_name: str,
     project_name: str,
     db
-) -> TestRun:
-    """Runs Playwright, saves metrics, failures, artifacts, RCA recommendations and Neo4j sync."""
-    # Find device profile
-    dp_res = await db.execute(select(DeviceProfile).where(DeviceProfile.tier == tier_key))
-    profile = dp_res.scalars().first()
-    profile_id = profile.id if profile else None
+):
+    """
+    Executes a single browser test run for a given device profile configuration.
+    Persists test run, metrics, failures, artifacts, RCA findings, and Neo4j knowledge nodes.
+    """
+    resolved_config = resolve_device_profile_config(profile_item)
+    profile_name = resolved_config.get("name", "Custom Profile")
+    tier_label = resolved_config.get("tier", "CUSTOM")
+
+    # Match or resolve database DeviceProfile entity
+    profile = None
+    if isinstance(profile_item, str):
+        dp_stmt = select(DeviceProfile).where(
+            or_(
+                DeviceProfile.id == profile_item,
+                DeviceProfile.tier == profile_item,
+                DeviceProfile.name == profile_item
+            )
+        )
+        dp_res = await db.execute(dp_stmt)
+        profile = dp_res.scalars().first()
+    elif isinstance(profile_item, dict) and profile_item.get("id"):
+        dp_stmt = select(DeviceProfile).where(DeviceProfile.id == profile_item["id"])
+        dp_res = await db.execute(dp_stmt)
+        profile = dp_res.scalars().first()
+
+    profile_id = profile.id if profile else resolved_config.get("id")
 
     # Create Initial Test Run Record
     test_run = TestRun(
@@ -44,6 +66,7 @@ async def _execute_single_tier(
         comparison_group_id=comparison_group_id,
         target_url=target_url,
         status=TestStatus.RUNNING.value,
+        configuration_snapshot=resolved_config,
         started_at=datetime.now(timezone.utc),
         is_synthetic=False
     )
@@ -53,10 +76,10 @@ async def _execute_single_tier(
     await db.commit()
     await db.refresh(test_run)
 
-    # Execute Playwright Test
+    # Execute Playwright Performance Test with CDP throttling
     result = await run_web_performance_test(
         target_url=target_url,
-        profile_key=tier_key,
+        profile_input=resolved_config,
         test_run_id=test_run.id
     )
 
@@ -72,6 +95,7 @@ async def _execute_single_tier(
     test_run.completed_at = datetime.now(timezone.utc)
     test_run.failure_count = len(result.failures)
     test_run.failure_summary = result.error_message or (f"{len(result.failures)} issue(s) detected" if result.failures else "Clean run")
+    test_run.configuration_snapshot = resolved_config
 
     # Persist Metrics
     for m in result.metrics:
@@ -113,12 +137,13 @@ async def _execute_single_tier(
 
     await db.flush()
 
-    # Generate Root Cause Analysis & Recommendations
+    # Generate Evidence-Grounded Root Cause Analysis
     rca_items = await generate_root_cause_analysis(
         metrics=result.metrics,
         failures=result.failures,
-        tier=tier_key,
-        project_name=project_name
+        tier=tier_label,
+        project_name=project_name,
+        device_name=profile_name
     )
 
     for r in rca_items:
@@ -137,17 +162,18 @@ async def _execute_single_tier(
 
     await db.commit()
 
-    # Sync to Neo4j
+    # Sync to Neo4j Knowledge Graph
     await sync_run_to_neo4j(
         workspace_name=workspace_name,
         project_id=project_id,
         project_name=project_name,
         run_id=test_run.id,
-        tier=tier_key,
+        profile_data=resolved_config,
         status=test_run.status,
         metrics=result.metrics,
         failures=result.failures,
-        recommendations=rca_items
+        recommendations=rca_items,
+        duration_ms=result.duration_ms
     )
 
     return test_run, result
@@ -161,17 +187,17 @@ async def orchestrate_web_test_job(
     project_id: str,
     workspace_id: str,
     workspace_name: str,
-    project_name: str
+    project_name: str,
+    device_profile_ids: Optional[List[str]] = None,
+    custom_profiles: Optional[List[Dict[str, Any]]] = None
 ):
     """
-    Background job execution engine:
-    1. Checks cancellation before starting.
-    2. Acquires browser execution slot (semaphore-limited).
-    3. Executes Playwright test(s) under timeout protection.
-    4. Updates job status at each stage (PREPARING -> RUNNING -> ANALYZING -> COMPLETED/FAILED).
-    5. Always releases concurrency slots and guarantees jobs never stay in RUNNING.
+    Multi-configuration background job execution orchestrator:
+    Supports arbitrary device profiles (preset, database ID, or custom dictionary).
+    Sequentially tests target application under real CDP emulation, updates real-time job state,
+    and produces side-by-side performance comparison.
     """
-    logger.info(f"Starting background orchestration for job {job_id} ({target_url}, {tier})")
+    logger.info(f"Starting orchestration for job {job_id} ({target_url}, mode={mode})")
     start_time = datetime.now(timezone.utc)
     slot_acquired = False
 
@@ -182,7 +208,7 @@ async def orchestrate_web_test_job(
             logger.info(f"Job {job_id} was cancelled before execution.")
             return
 
-        # Stage 1: PREPARING - Acquire browser slot
+        # Stage 1: PREPARING
         await job_store.update_job(
             job_id,
             status=JobState.PREPARING.value,
@@ -201,175 +227,148 @@ async def orchestrate_web_test_job(
             logger.info(f"Job {job_id} was cancelled while acquiring slot.")
             return
 
-        # Stage 2: RUNNING & ANALYZING with Timeout
-        timeout_secs = settings.WEB_TEST_TIMEOUT_SECONDS
+        async with AsyncSessionLocal() as session:
+            from app.api.v1.comparisons import build_comparison_payload, serialize_test_run
 
-        async def _run_workload():
-            nonlocal project_id
-            async with AsyncSessionLocal() as session:
-                from app.api.v1.comparisons import build_comparison_payload, serialize_test_run
-
-                # Ensure project_id is guaranteed
-                if not project_id and workspace_id:
-                    p_stmt = select(Project).where(
-                        Project.workspace_id == workspace_id,
-                        Project.name == target_url
+            # Ensure project exists
+            if not project_id and workspace_id:
+                p_stmt = select(Project).where(
+                    Project.workspace_id == workspace_id,
+                    Project.name == target_url
+                )
+                p_res = await session.execute(p_stmt)
+                p_obj = p_res.scalars().first()
+                if not p_obj:
+                    p_obj = Project(
+                        workspace_id=workspace_id,
+                        name=target_url,
+                        type=ProjectType.WEB.value,
+                        target_url=target_url
                     )
-                    p_res = await session.execute(p_stmt)
-                    p_obj = p_res.scalars().first()
-                    if not p_obj:
-                        p_obj = Project(
-                            workspace_id=workspace_id,
-                            name=target_url,
-                            type=ProjectType.WEB.value,
-                            target_url=target_url
-                        )
-                        session.add(p_obj)
-                        await session.commit()
-                        await session.refresh(p_obj)
-                    project_id = p_obj.id
+                    session.add(p_obj)
+                    await session.commit()
+                    await session.refresh(p_obj)
+                project_id = p_obj.id
 
-                if mode == "DUAL_COMPARISON":
-                    comparison_group_id = job_id
-                    await job_store.update_job(
-                        job_id,
-                        status=JobState.RUNNING.value,
-                        stage="Executing Good Budget Test",
-                        progress_message="Simulating 4G network & 4x CPU throttle (Good Budget profile)...",
-                        comparison_group_id=comparison_group_id
-                    )
+            # Determine list of profile targets to execute
+            targets_to_run: List[Any] = []
+            if device_profile_ids and len(device_profile_ids) > 0:
+                targets_to_run = list(device_profile_ids)
+            elif custom_profiles and len(custom_profiles) > 0:
+                targets_to_run = list(custom_profiles)
+            elif tier == "BOTH":
+                targets_to_run = ["GOOD_BUDGET", "ENTRY_LEVEL"]
+            else:
+                targets_to_run = [tier]
 
-                    run_gb, res_gb = None, None
-                    gb_error = None
-                    try:
-                        run_gb, res_gb = await _execute_single_tier(
-                            target_url=target_url,
-                            tier_key="GOOD_BUDGET",
-                            project_id=project_id,
-                            comparison_group_id=comparison_group_id,
-                            workspace_name=workspace_name,
-                            project_name=project_name,
-                            db=session
-                        )
-                    except Exception as e:
-                        gb_error = str(e)
-                        try:
-                            await session.rollback()
-                        except Exception:
-                            pass
-                        logger.exception(f"Good Budget tier failed for job {job_id}: {e}")
+            is_comparison = len(targets_to_run) > 1 or mode in ("DUAL_COMPARISON", "MULTI_COMPARISON")
+            comparison_group_id = job_id if is_comparison else None
 
-                    await job_store.update_job(
-                        job_id,
-                        stage="Executing Entry-Level Test",
-                        progress_message="Simulating 3G network & 8x CPU throttle (Entry-Level profile)...",
-                        good_budget_run_id=run_gb.id if run_gb else None
-                    )
+            completed_runs = []
+            failed_errors = []
 
-                    run_el, res_el = None, None
-                    el_error = None
-                    try:
-                        run_el, res_el = await _execute_single_tier(
-                            target_url=target_url,
-                            tier_key="ENTRY_LEVEL",
-                            project_id=project_id,
-                            comparison_group_id=comparison_group_id,
-                            workspace_name=workspace_name,
-                            project_name=project_name,
-                            db=session
-                        )
-                    except Exception as e:
-                        el_error = str(e)
-                        try:
-                            await session.rollback()
-                        except Exception:
-                            pass
-                        logger.exception(f"Entry-Level tier failed for job {job_id}: {e}")
+            for idx, target_profile in enumerate(targets_to_run):
+                # Check cancellation between profile iterations
+                job_rec = await job_store.get_job(job_id)
+                if job_rec and job_rec.get("cancelled"):
+                    logger.info(f"Job {job_id} was cancelled before testing profile #{idx+1}.")
+                    break
 
-                    await job_store.update_job(
-                        job_id,
-                        status=JobState.ANALYZING.value,
-                        stage="Analyzing Discrepancies",
-                        progress_message="Correlating differential performance drop & generating RCA...",
-                        entry_level_run_id=run_el.id if run_el else None
-                    )
+                resolved_cfg = resolve_device_profile_config(target_profile)
+                prof_name = resolved_cfg.get("name", f"Profile #{idx+1}")
 
-                    # Build comparison payload
-                    comp_payload = await build_comparison_payload(comparison_group_id, session)
+                await job_store.update_job(
+                    job_id,
+                    status=JobState.RUNNING.value,
+                    stage=f"Testing Configuration ({idx+1}/{len(targets_to_run)})",
+                    progress_message=f"Executing {prof_name} ({resolved_cfg['cpu_throttle_rate']}x CPU, {resolved_cfg['network']['name']})...",
+                    comparison_group_id=comparison_group_id
+                )
 
-                    # Evaluate final status based on both runs
-                    duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
-                    both_succeeded = run_gb is not None and run_el is not None
-                    neither_succeeded = run_gb is None and run_el is None
-
-                    if neither_succeeded:
-                        final_status = JobState.FAILED.value
-                        progress_msg = f"Both device profiles failed to complete. Good Budget: {gb_error} | Entry-Level: {el_error}"
-                    elif not both_succeeded:
-                        final_status = JobState.PARTIAL.value
-                        if run_gb:
-                            progress_msg = f"Good Budget profile completed, but Entry-Level profile failed ({el_error})."
-                        else:
-                            progress_msg = f"Entry-Level profile completed, but Good Budget profile failed ({gb_error})."
-                    else:
-                        has_warnings = (
-                            run_gb.status == TestStatus.COMPLETED_WITH_WARNINGS.value or
-                            run_el.status == TestStatus.COMPLETED_WITH_WARNINGS.value
-                        )
-                        has_failed = (
-                            run_gb.status == TestStatus.FAILED.value or
-                            run_el.status == TestStatus.FAILED.value
-                        )
-                        if has_failed:
-                            final_status = JobState.FAILED.value
-                            progress_msg = "Device test execution failed on target application."
-                        elif has_warnings:
-                            final_status = JobState.COMPLETED_WITH_WARNINGS.value
-                            progress_msg = "Dual device comparison completed with non-fatal warnings."
-                        else:
-                            final_status = JobState.COMPLETED.value
-                            progress_msg = "Dual device comparison completed successfully."
-
-                    await job_store.update_job(
-                        job_id,
-                        status=final_status,
-                        stage="Completed" if final_status != JobState.FAILED.value else "Execution Failed",
-                        progress_message=progress_msg,
-                        comparison_group_id=comparison_group_id,
-                        good_budget_run_id=run_gb.id if run_gb else None,
-                        entry_level_run_id=run_el.id if run_el else None,
-                        comparison_data=comp_payload,
-                        recommendations=comp_payload.get("recommendations", []) if comp_payload else [],
-                        completed_at=datetime.now(timezone.utc).isoformat(),
-                        duration_ms=duration
-                    )
-
-                else:
-                    # Single profile run
-                    await job_store.update_job(
-                        job_id,
-                        status=JobState.RUNNING.value,
-                        stage=f"Executing {tier} Test",
-                        progress_message=f"Simulating {tier} profile under throttled conditions..."
-                    )
-
-                    single_run, single_result = await _execute_single_tier(
+                try:
+                    run_obj, res_obj = await _execute_single_tier(
                         target_url=target_url,
-                        tier_key=tier,
+                        profile_item=target_profile,
                         project_id=project_id,
-                        comparison_group_id=None,
+                        comparison_group_id=comparison_group_id,
                         workspace_name=workspace_name,
                         project_name=project_name,
                         db=session
                     )
+                    completed_runs.append((run_obj, res_obj))
+                except Exception as tier_err:
+                    logger.exception(f"Profile {prof_name} failed in job {job_id}: {tier_err}")
+                    failed_errors.append((prof_name, str(tier_err)))
+                    try:
+                        await session.rollback()
+                    except Exception:
+                        pass
 
-                    duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
+            # Stage 3: ANALYZING & BUILDING COMPARISON
+            duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
+
+            if is_comparison:
+                await job_store.update_job(
+                    job_id,
+                    status=JobState.ANALYZING.value,
+                    stage="Analyzing Discrepancies",
+                    progress_message="Aggregating performance metrics, degradation percentages, and RCA findings..."
+                )
+
+                comp_payload = await build_comparison_payload(comparison_group_id, session)
+
+                if len(completed_runs) == 0:
+                    final_status = JobState.FAILED.value
+                    progress_msg = f"All {len(targets_to_run)} device configurations failed. Errors: {'; '.join(f'{k}: {v}' for k, v in failed_errors)}"
+                elif len(completed_runs) < len(targets_to_run):
+                    final_status = JobState.PARTIAL.value
+                    progress_msg = f"{len(completed_runs)} of {len(targets_to_run)} configurations completed. Failures: {'; '.join(f'{k}: {v}' for k, v in failed_errors)}"
+                else:
+                    has_warnings = any(r[0].status == TestStatus.COMPLETED_WITH_WARNINGS.value for r in completed_runs)
+                    has_failed = any(r[0].status == TestStatus.FAILED.value for r in completed_runs)
+                    if has_failed:
+                        final_status = JobState.FAILED.value
+                        progress_msg = "Device test execution failed on target application."
+                    elif has_warnings:
+                        final_status = JobState.COMPLETED_WITH_WARNINGS.value
+                        progress_msg = "Multi-device comparison completed with non-fatal warnings."
+                    else:
+                        final_status = JobState.COMPLETED.value
+                        progress_msg = f"Multi-device comparison of {len(completed_runs)} configurations completed successfully."
+
+                await job_store.update_job(
+                    job_id,
+                    status=final_status,
+                    stage="Completed" if final_status != JobState.FAILED.value else "Execution Failed",
+                    progress_message=progress_msg,
+                    comparison_group_id=comparison_group_id,
+                    comparison_data=comp_payload,
+                    recommendations=comp_payload.get("recommendations", []) if comp_payload else [],
+                    completed_at=datetime.now(timezone.utc).isoformat(),
+                    duration_ms=duration
+                )
+
+            else:
+                # Single run handling
+                if len(completed_runs) == 0:
+                    final_status = JobState.FAILED.value
+                    err_msg = failed_errors[0][1] if failed_errors else "Unknown execution error"
+                    await job_store.update_job(
+                        job_id,
+                        status=final_status,
+                        stage="Execution Failed",
+                        progress_message=f"Test failed: {err_msg}",
+                        completed_at=datetime.now(timezone.utc).isoformat(),
+                        duration_ms=duration
+                    )
+                else:
+                    single_run, single_result = completed_runs[0]
                     single_status = (
                         JobState.FAILED.value if single_run.status == TestStatus.FAILED.value else (
                             JobState.COMPLETED_WITH_WARNINGS.value if single_run.status == TestStatus.COMPLETED_WITH_WARNINGS.value else JobState.COMPLETED.value
                         )
                     )
-                    primary_fail = single_result.failures[0] if (single_result and single_result.failures) else None
+
                     stmt_single = (
                         select(TestRun)
                         .where(TestRun.id == single_run.id)
@@ -381,102 +380,44 @@ async def orchestrate_web_test_job(
                             selectinload(TestRun.device_profile),
                         )
                     )
-                    single_res = await session.execute(stmt_single)
-                    fresh_single = single_res.scalars().first()
-                    serialized_single = serialize_test_run(fresh_single or single_run)
+                    sr_res = await session.execute(stmt_single)
+                    fresh_run = sr_res.scalars().first()
+                    serialized_single = serialize_test_run(fresh_run)
 
                     await job_store.update_job(
                         job_id,
                         status=single_status,
-                        stage="Completed",
-                        progress_message=f"Web test for {tier} finished ({single_run.failure_summary}).",
-                        test_run_id=single_run.id,
+                        stage="Completed" if single_status != JobState.FAILED.value else "Execution Failed",
+                        progress_message=f"Test run completed ({single_run.status.replace('_', ' ')}).",
+                        single_run_id=single_run.id,
                         single_run_data=serialized_single,
-                        recommendations=serialized_single.get("recommendations", []) if serialized_single else [],
-                        error_category=primary_fail["failure_type"] if (primary_fail and single_status == JobState.FAILED.value) else None,
-                        error=single_run.failure_summary if single_status == JobState.FAILED.value else None,
+                        metrics_summary={m.name: m.value for m in (fresh_run.metrics or [])},
+                        recommendations=[{
+                            "id": r.id,
+                            "title": r.title,
+                            "impact": r.impact,
+                            "category": r.category,
+                            "probable_cause": r.probable_cause,
+                            "remediation": r.remediation,
+                            "verification_steps": r.verification_steps,
+                            "status": r.status
+                        } for r in (fresh_run.recommendations or [])],
                         completed_at=datetime.now(timezone.utc).isoformat(),
                         duration_ms=duration
                     )
 
-        # Run with overall timeout
-        await asyncio.wait_for(_run_workload(), timeout=timeout_secs)
-
-    except asyncio.CancelledError:
-        logger.info(f"Job {job_id} task was cancelled in-flight.")
-        duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
-        await job_store.update_job(
-            job_id,
-            status=JobState.CANCELLED.value,
-            stage="Cancelled",
-            progress_message="Test execution was cancelled by user.",
-            completed_at=datetime.now(timezone.utc).isoformat(),
-            duration_ms=duration
-        )
-    except asyncio.TimeoutError:
-        logger.error(f"Job {job_id} exceeded maximum timeout of {settings.WEB_TEST_TIMEOUT_SECONDS}s.")
-        duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
-        await job_store.update_job(
-            job_id,
-            status=JobState.FAILED.value,
-            stage="Timeout Exceeded",
-            progress_message=f"Execution timed out after {settings.WEB_TEST_TIMEOUT_SECONDS}s.",
-            error="Test execution timed out.",
-            error_category="NAVIGATION_TIMEOUT",
-            completed_at=datetime.now(timezone.utc).isoformat(),
-            duration_ms=duration
-        )
-    except Exception as e:
-        logger.exception(f"Job {job_id} failed with error: {e}")
-        duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
-        from app.engines.web.classifier import classify_navigation_error
-        classified = classify_navigation_error(str(e))
+    except Exception as exc:
+        logger.exception(f"Unhandled exception in orchestrate_web_test_job {job_id}: {exc}")
         await job_store.update_job(
             job_id,
             status=JobState.FAILED.value,
             stage="Execution Failed",
-            progress_message=f"{classified.category}: {classified.explanation}",
-            error=str(e),
-            error_category=classified.category,
-            error_details=classified.to_dict(),
-            completed_at=datetime.now(timezone.utc).isoformat(),
-            duration_ms=duration
+            progress_message=f"System error: {str(exc)}",
+            error=str(exc),
+            completed_at=datetime.now(timezone.utc).isoformat()
         )
     finally:
-        job_store.unregister_active_task(job_id)
         if slot_acquired:
             concurrency_manager.release_slot()
-        await concurrency_manager.unregister_job(job_id, workspace_id, target_url)
-
-
-@celery_app.task(name="tasks.run_web_test_task", bind=True, max_retries=1)
-def run_web_test_task(
-    self,
-    job_id: str,
-    target_url: str,
-    tier: str,
-    mode: str,
-    project_id: str,
-    workspace_id: str,
-    workspace_name: str,
-    project_name: str
-):
-    """Celery worker task wrapper to execute the async orchestration."""
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-    return loop.run_until_complete(
-        orchestrate_web_test_job(
-            job_id=job_id,
-            target_url=target_url,
-            tier=tier,
-            mode=mode,
-            project_id=project_id,
-            workspace_id=workspace_id,
-            workspace_name=workspace_name,
-            project_name=project_name
-        )
-    )
+        await concurrency_manager.release_workspace_slot(workspace_id, job_id)
+        logger.info(f"Orchestration completed for job {job_id}. Slots released.")

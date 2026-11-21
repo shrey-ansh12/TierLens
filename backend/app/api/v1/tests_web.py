@@ -75,13 +75,26 @@ async def queue_web_test(
 
     project_id = project.id
     project_name = project.name
-    mode = "DUAL_COMPARISON" if payload.tier == "BOTH" else "SINGLE_RUN"
+
+    # Determine execution mode based on configuration selection
+    if payload.device_profile_ids and len(payload.device_profile_ids) > 1:
+        mode = "MULTI_COMPARISON"
+        tier_label = f"{len(payload.device_profile_ids)} Devices"
+    elif payload.custom_profiles and len(payload.custom_profiles) > 1:
+        mode = "MULTI_COMPARISON"
+        tier_label = f"{len(payload.custom_profiles)} Custom Devices"
+    elif payload.tier == "BOTH":
+        mode = "DUAL_COMPARISON"
+        tier_label = "BOTH"
+    else:
+        mode = "SINGLE_RUN"
+        tier_label = payload.tier or (payload.device_profile_ids[0] if payload.device_profile_ids else "CUSTOM")
 
     # 5. Register in job store
     await job_store.create_job(
         job_id=job_id,
         target_url=payload.target_url,
-        tier=payload.tier,
+        tier=tier_label,
         mode=mode,
         workspace_id=workspace_id,
         project_id=project_id
@@ -92,12 +105,14 @@ async def queue_web_test(
         orchestrate_web_test_job(
             job_id=job_id,
             target_url=payload.target_url,
-            tier=payload.tier,
+            tier=payload.tier or "GOOD_BUDGET",
             mode=mode,
             project_id=project_id,
             workspace_id=workspace_id,
             workspace_name=workspace_name,
-            project_name=project_name
+            project_name=project_name,
+            device_profile_ids=payload.device_profile_ids,
+            custom_profiles=payload.custom_profiles
         )
     )
     job_store.register_active_task(job_id, task)
@@ -108,7 +123,7 @@ async def queue_web_test(
         "status": JobState.QUEUED.value,
         "stage": "Queue Dispatch",
         "target_url": payload.target_url,
-        "tier": payload.tier,
+        "tier": tier_label,
         "mode": mode,
         "workspace_id": workspace_id,
         "poll_url": f"/api/v1/tests/web/jobs/{job_id}",

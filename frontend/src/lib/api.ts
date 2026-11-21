@@ -105,8 +105,51 @@ export class ApiClient {
     });
   }
 
+  // Configurable Device Profiles
+  static listDeviceProfiles() {
+    return this.request("/api/v1/device-profiles");
+  }
+
+  static createDeviceProfile(data: any) {
+    return this.request("/api/v1/device-profiles", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  static getDeviceProfile(id: string) {
+    return this.request(`/api/v1/device-profiles/${id}`);
+  }
+
+  static updateDeviceProfile(id: string, data: any) {
+    return this.request(`/api/v1/device-profiles/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  static deleteDeviceProfile(id: string) {
+    return this.request(`/api/v1/device-profiles/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  static duplicateDeviceProfile(id: string) {
+    return this.request(`/api/v1/device-profiles/${id}/duplicate`, {
+      method: "POST",
+    });
+  }
+
   // Engine A: Web Testing
-  static runWebTest(data: { target_url: string; tier: string; project_id?: string; scenario_name?: string; is_demo?: boolean }) {
+  static runWebTest(data: {
+    target_url: string;
+    tier?: string;
+    device_profile_ids?: string[];
+    custom_profiles?: any[];
+    project_id?: string;
+    scenario_name?: string;
+    is_demo?: boolean;
+  }) {
     return this.request("/api/v1/tests/web/run", {
       method: "POST",
       body: JSON.stringify(data),
