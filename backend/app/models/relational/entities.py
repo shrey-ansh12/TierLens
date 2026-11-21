@@ -132,13 +132,31 @@ class DeviceProfile(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     name = Column(String(128), nullable=False) # e.g. "Samsung Galaxy A14 Tier (Good Budget)", "Redmi 9A Tier (Entry-Level)"
-    tier = Column(String(32), nullable=False) # GOOD_BUDGET, ENTRY_LEVEL
+    tier = Column(String(64), nullable=False) # GOOD_BUDGET, ENTRY_LEVEL, MID_RANGE, FLAGSHIP, DESKTOP_LOW, etc.
     platform = Column(String(32), nullable=False) # WEB, ANDROID
-    cpu_throttle_rate = Column(Float, default=1.0) # 4x for Good Budget, 8x for Entry-Level
-    network_profile = Column(String(64), default="Fast 3G") # "Fast 3G", "Slow 3G", "WiFi"
+    device_type = Column(String(64), default="Custom Device")
+    cpu_cores = Column(Integer, default=4)
+    cpu_category = Column(String(64), default="Budget")
+    cpu_throttle_rate = Column(Float, default=1.0) # Slowdown multiplier
+    cpu_slowdown_multiplier = Column(Float, default=1.0)
+    storage_profile = Column(String(64), default="Standard")
+    storage_capacity_gb = Column(Integer, default=64)
+    storage_available_gb = Column(Integer, default=16)
+    network_profile = Column(String(64), default="Fast 3G") # "Fast 3G", "Slow 3G", "4G", "5G", "Wi-Fi", "Offline", "Custom"
+    network_down_kbps = Column(Float, default=1600.0)
+    network_up_kbps = Column(Float, default=750.0)
+    network_latency_ms = Column(Integer, default=40)
+    network_packet_loss = Column(Float, default=0.0)
     viewport_width = Column(Integer, default=390)
     viewport_height = Column(Integer, default=844)
+    device_scale_factor = Column(Float, default=2.0)
+    is_mobile = Column(Boolean, default=True)
+    has_touch = Column(Boolean, default=True)
+    user_agent = Column(String(1024), nullable=True)
     ram_mb = Column(Integer, default=4096)
+    is_custom = Column(Boolean, default=False)
+    workspace_id = Column(String(36), ForeignKey("workspaces.id"), nullable=True)
+    description = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=get_utc_now)
 
@@ -159,6 +177,7 @@ class TestRun(Base):
     duration_ms = Column(Integer, default=0)
     failure_count = Column(Integer, default=0)
     failure_summary = Column(Text, nullable=True)
+    configuration_snapshot = Column(JSON, nullable=True) # Frozen snapshot of device config parameters
     is_synthetic = Column(Boolean, default=False) # Strict Real Data Policy: marks demo/sample data clearly
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)

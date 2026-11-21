@@ -26,8 +26,17 @@ def serialize_test_run(r: Optional[TestRun]) -> Optional[Dict[str, Any]]:
                 "name": dp.name,
                 "tier": dp.tier,
                 "platform": dp.platform,
+                "device_type": getattr(dp, "device_type", "Custom Device"),
+                "cpu_cores": getattr(dp, "cpu_cores", 4),
                 "cpu_throttle_rate": dp.cpu_throttle_rate,
+                "cpu_slowdown_multiplier": getattr(dp, "cpu_slowdown_multiplier", dp.cpu_throttle_rate),
+                "storage_profile": getattr(dp, "storage_profile", "Standard"),
+                "storage_capacity_gb": getattr(dp, "storage_capacity_gb", 64),
+                "storage_available_gb": getattr(dp, "storage_available_gb", 16),
                 "network_profile": dp.network_profile,
+                "network_down_kbps": getattr(dp, "network_down_kbps", 1600.0),
+                "network_up_kbps": getattr(dp, "network_up_kbps", 750.0),
+                "network_latency_ms": getattr(dp, "network_latency_ms", 40),
                 "viewport_width": dp.viewport_width,
                 "viewport_height": dp.viewport_height,
                 "ram_mb": dp.ram_mb
@@ -126,6 +135,7 @@ def serialize_test_run(r: Optional[TestRun]) -> Optional[Dict[str, Any]]:
         "duration_ms": r.duration_ms or 0,
         "failure_count": r.failure_count or 0,
         "failure_summary": r.failure_summary,
+        "configuration_snapshot": getattr(r, "configuration_snapshot", None),
         "is_synthetic": r.is_synthetic,
         "started_at": r.started_at.isoformat() if r.started_at else None,
         "completed_at": r.completed_at.isoformat() if r.completed_at else None,
@@ -140,7 +150,7 @@ def serialize_test_run(r: Optional[TestRun]) -> Optional[Dict[str, Any]]:
 
 async def build_comparison_payload(comparison_group_id: str, db: AsyncSession) -> Optional[Dict[str, Any]]:
     """
-    Constructs a full Dual Comparison data dictionary.
+    Constructs a comparison data payload supporting 1, 2, 3, or more device configurations.
     Includes Indian Market Demographic Ranking and Cheap Phone Test Verdict (T1.2).
     """
     stmt = (
@@ -153,6 +163,7 @@ async def build_comparison_payload(comparison_group_id: str, db: AsyncSession) -
             selectinload(TestRun.recommendations),
             selectinload(TestRun.device_profile),
         )
+        .order_by(TestRun.created_at.asc())
     )
     res = await db.execute(stmt)
     runs = res.scalars().all()
@@ -160,32 +171,91 @@ async def build_comparison_payload(comparison_group_id: str, db: AsyncSession) -
     if not runs:
         return None
 
-    gb_run = next((r for r in runs if r.device_profile and r.device_profile.tier == "GOOD_BUDGET"), None)
-    el_run = next((r for r in runs if r.device_profile and r.device_profile.tier == "ENTRY_LEVEL"), None)
+    serialized_runs = [serialize_test_run(r) for r in runs if r is not None]
+
+    # Legacy two-tier compatibility
+    gb_run = next((r for r in runs if r.device_profile and r.device_profile.tier in ("GOOD_BUDGET", "MID_RANGE", "DESKTOP_STANDARD")), None)
+    el_run = next((r for r in runs if r.device_profile and r.device_profile.tier in ("ENTRY_LEVEL", "DESKTOP_LOW")), None)
 
     if not gb_run and len(runs) > 0:
         gb_run = runs[0]
     if not el_run and len(runs) > 1:
         el_run = runs[1]
+    elif not el_run and len(runs) == 1:
+        el_run = runs[0]
 
+    # Gather all metric names across all runs
+    all_metrics = set()
+    run_metric_maps = []
+    for r in runs:
+        m_map = {m.name: m for m in r.metrics} if r.metrics else {}
+        run_metric_maps.append((r, m_map))
+        all_metrics.update(m_map.keys())
+
+    # Build N-way comparison matrix
+    multi_metrics_diff: Dict[str, Dict[str, Any]] = {}
     metrics_diff: Dict[str, Dict[str, Any]] = {}
     regressions: List[Dict[str, Any]] = []
 
     gb_map = {m.name: m for m in gb_run.metrics} if gb_run and gb_run.metrics else {}
     el_map = {m.name: m for m in el_run.metrics} if el_run and el_run.metrics else {}
 
-    all_metric_names = set(gb_map.keys()).union(el_map.keys())
-    for name in all_metric_names:
+    # Rank runs to find best and worst configuration based on LCP or Page Load Time
+    ranked_runs = []
+    for r, m_map in run_metric_maps:
+        lcp_val = m_map["LCP"].value if "LCP" in m_map else 99999
+        load_val = m_map["PAGE_LOAD_TIME"].value if "PAGE_LOAD_TIME" in m_map else 99999
+        ranked_runs.append((r, lcp_val, load_val))
+
+    ranked_runs.sort(key=lambda x: (x[1], x[2]))
+    best_run = ranked_runs[0][0] if ranked_runs else None
+    worst_run = ranked_runs[-1][0] if len(ranked_runs) > 1 else None
+
+    best_config = best_run.device_profile.name if (best_run and best_run.device_profile) else (best_run.id[:8] if best_run else "N/A")
+    worst_config = worst_run.device_profile.name if (worst_run and worst_run.device_profile) else (worst_run.id[:8] if worst_run else "N/A")
+
+    # Multi-way metric differences
+    for name in sorted(list(all_metrics)):
+        unit = ""
+        values_by_profile = {}
+        numeric_values = []
+
+        for r, m_map in run_metric_maps:
+            prof_name = r.device_profile.name if r.device_profile else f"Run {r.id[:6]}"
+            if name in m_map:
+                val = m_map[name].value
+                unit = m_map[name].unit
+                values_by_profile[prof_name] = val
+                numeric_values.append((prof_name, val))
+            else:
+                values_by_profile[prof_name] = None
+
+        # Calculate degradation percentage relative to best run
+        baseline_val = None
+        if best_run:
+            best_m_map = next((m_map for r, m_map in run_metric_maps if r.id == best_run.id), {})
+            if name in best_m_map:
+                baseline_val = best_m_map[name].value
+
+        degradations = {}
+        if baseline_val and baseline_val > 0:
+            for prof_name, val in values_by_profile.items():
+                if val is not None:
+                    pct = round(((val - baseline_val) / baseline_val * 100), 1)
+                    degradations[prof_name] = pct
+
+        multi_metrics_diff[name] = {
+            "values": values_by_profile,
+            "unit": unit,
+            "baseline_value": baseline_val,
+            "degradations_pct": degradations
+        }
+
+        # Legacy 2-run diff
         gb_val = gb_map[name].value if name in gb_map else None
         el_val = el_map[name].value if name in el_map else None
-        unit = gb_map[name].unit if name in gb_map else (el_map[name].unit if name in el_map else "")
-
-        if gb_val is not None and el_val is not None:
-            delta = round(el_val - gb_val, 2)
-            pct_change = round(((el_val - gb_val) / gb_val * 100), 1) if gb_val > 0 else 0.0
-        else:
-            delta = None
-            pct_change = None
+        delta = round(el_val - gb_val, 2) if (gb_val is not None and el_val is not None) else None
+        pct_change = round(((el_val - gb_val) / gb_val * 100), 1) if (gb_val and el_val is not None and gb_val > 0) else None
 
         metrics_diff[name] = {
             "good_budget": gb_val,
@@ -203,27 +273,28 @@ async def build_comparison_payload(comparison_group_id: str, db: AsyncSession) -
                     "pct_change": pct_change,
                     "unit": unit,
                     "severity": "CRITICAL" if pct_change >= 100 or (name == "LCP" and el_val and el_val > 4000) else "MODERATE",
-                    "explanation": f"{name} degraded by +{pct_change}% on Entry-Level hardware."
+                    "explanation": f"{name} degraded by +{pct_change}% on lower-tier hardware relative to baseline."
                 })
 
+    # Device-specific failures (occurred on lower-tier devices but not on high-tier)
     device_specific: List[Dict[str, Any]] = []
-    if el_run and gb_run and el_run.failures:
-        gb_signatures = {f.error_signature for f in (gb_run.failures or [])}
-        for f in el_run.failures:
-            if f.error_signature not in gb_signatures:
+    if len(runs) > 1 and worst_run and best_run:
+        best_sigs = {f.error_signature for f in (best_run.failures or [])}
+        for f in (worst_run.failures or []):
+            if f.error_signature not in best_sigs:
                 device_specific.append({
                     "title": f.title,
                     "failure_type": f.failure_type,
                     "signature": f.error_signature,
                     "message": f.message,
-                    "tier": "ENTRY_LEVEL_EXCLUSIVE",
-                    "probable_cause": "Resource exhaustion or engine timeout specific to Entry-Level hardware constraints."
+                    "tier": worst_run.device_profile.name if worst_run.device_profile else "Low-Tier Exclusive",
+                    "probable_cause": "Resource exhaustion, engine timeout, or main thread blocking under device constraints."
                 })
 
-    # Collect combined recommendations
+    # Collect combined recommendations across all runs
     combined_recs = []
     seen_rec_titles = set()
-    for run in [el_run, gb_run]:
+    for run in runs:
         if run and run.recommendations:
             for rec in run.recommendations:
                 if rec.title not in seen_rec_titles:
@@ -330,8 +401,32 @@ async def build_comparison_payload(comparison_group_id: str, db: AsyncSession) -
         "market_share_at_risk_pct": pct_at_risk
     }
 
+    configurations_list = []
+    for r in runs:
+        if r.device_profile:
+            dp = r.device_profile
+            configurations_list.append({
+                "id": dp.id,
+                "name": dp.name,
+                "tier": dp.tier,
+                "device_type": getattr(dp, "device_type", "Custom"),
+                "cpu_cores": getattr(dp, "cpu_cores", 4),
+                "cpu_throttle_rate": dp.cpu_throttle_rate,
+                "ram_mb": dp.ram_mb,
+                "storage_profile": getattr(dp, "storage_profile", "Standard"),
+                "network_profile": dp.network_profile,
+                "status": r.status,
+                "duration_ms": r.duration_ms
+            })
+
+
     return {
         "comparison_group_id": comparison_group_id,
+        "runs": serialized_runs,
+        "configurations": configurations_list,
+        "best_configuration": {"name": best_config, "run_id": best_run.id if best_run else None},
+        "worst_configuration": {"name": worst_config, "run_id": worst_run.id if worst_run else None},
+        "multi_metrics_diff": multi_metrics_diff,
         "good_budget_run": serialize_test_run(gb_run),
         "entry_level_run": serialize_test_run(el_run),
         "metrics_diff": metrics_diff,
@@ -343,8 +438,14 @@ async def build_comparison_payload(comparison_group_id: str, db: AsyncSession) -
         "root_cause_summary": {
             "total_regressions": len(regressions),
             "exclusive_failures_count": len(device_specific),
-            "ranked_failures_count": len(ranked_failures)
-        }
+            "ranked_failures_count": len(ranked_failures),
+            "configurations_count": len(runs)
+        },
+        "limitation_notice": (
+            "Technical Disclosure: CPU and Network conditions are emulated via Chrome DevTools Protocol. "
+            "Configured RAM and Storage values are device-profile metadata used for analytical comparison. "
+            "Host browser runs inside the host system runtime."
+        )
     }
 
 

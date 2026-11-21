@@ -55,14 +55,14 @@ def classify_navigation_error(
         "cloudflare", "turnstile", "recaptcha", "hcaptcha", "cf-chl-bypass",
         "just a moment...", "verify you are human", "attention required",
         "bot protection", "ddos-guard", "perimeterx", "datadome", "access denied",
-        "challenge-platform", "security check"
+        "challenge-platform", "security check", "err_http2_protocol_error"
     ]
     is_bot_page = any(m in title or m in content for m in ["just a moment...", "verify you are human", "cf-chl-bypass", "turnstile", "challenge-platform"])
     is_bot_error = any(m in msg for m in bot_markers)
-    if (status in (403, 429) and (is_bot_page or is_bot_error)) or is_bot_page:
+    if (status in (403, 429) and (is_bot_page or is_bot_error)) or is_bot_page or "err_http2_protocol_error" in msg:
         return ClassifiedError(
             category=ErrorCategory.ACCESS_RESTRICTION,
-            explanation="Target website is protected by automated bot detection, CAPTCHA, or access restriction.",
+            explanation="Target website is protected by automated bot detection or blocked the connection (Bot Firewall / HTTP2 drop). Enterprise sites like Zomato, Swiggy, and Amazon block automated headless browsers.",
             retryable=False,
             technical_details={"http_status": status, "matched_rule": "anti_bot_or_captcha_detected"}
         )
