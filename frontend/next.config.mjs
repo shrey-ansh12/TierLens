@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const cspHeader = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline' 'sha256-Q+8tPsjVtiDsjF/Cv8FMOpg2Yg91oKFKDAJat1PPb2g=' 'sha256-wRfIeDJt1bwSFMRfDMdxwZUuTvLK9u/LfEuCnHlx/48=' 'sha256-GFpz/zVIUU2ZAUkGWb4h9JIE7hkc+D/bZEg57m6KhTI=' 'sha256-SuvDUVSgu1EylxDW0Zmi63F4cRbdpXk3lo+HuGdvqEM=' 'sha256-9oBNF6r3wSK5obdVtsJV65mp5r9g65B4RKgfI6Gl27U=' 'sha256-I8psbrxpQgB9+D5b2Jt+HJJtG9muUZs9cjqZxUbX1+A=' https://tierlens.onrender.com;
+  script-src 'self' 'unsafe-inline' https://tierlens.onrender.com;
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: blob: https://tierlens.onrender.com;
   font-src 'self' data:;
