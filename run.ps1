@@ -1,43 +1,43 @@
-<#
-.SYNOPSIS
-    TierLens Launch Orchestrator for Windows 11
-.DESCRIPTION
-    Starts the TierLens FastAPI backend and Next.js frontend services.
-.EXAMPLE
-    .\run.ps1
-#>
-
 param (
-    [string]$Mode = "all" # "all", "backend", "frontend", "test"
+    [string]$Mode = "all"
 )
 
 $ErrorActionPreference = "Stop"
 $WorkspaceRoot = $PSScriptRoot
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "   TIERLENS — Application Performance & Device Intelligence" -ForegroundColor Cyan
+Write-Host "   TIERLENS - Application Performance and Device Intelligence" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
-# Locate best available Python executable
-$PythonExe = "$WorkspaceRoot\backend\.venv\Scripts\python.exe"
-if (-not (Test-Path $PythonExe)) {
-    if (Test-Path "C:\Users\Harsh\AppData\Local\Python\bin\python.exe") {
-        $PythonExe = "C:\Users\Harsh\AppData\Local\Python\bin\python.exe"
-    } else {
-        $PythonExe = (Get-Command python -ErrorAction SilentlyContinue).Source
+# Locate best available unblocked Python executable
+$PythonCandidates = @(
+    "C:\Users\Harsh\AppData\Local\Python\bin\python.exe",
+    (Get-Command python -ErrorAction SilentlyContinue).Source,
+    "$WorkspaceRoot\backend\.venv\Scripts\python.exe"
+)
+$PythonExe = $null
+foreach ($cand in $PythonCandidates) {
+    if ($cand -and (Test-Path $cand)) {
+        try {
+            $testOut = & $cand --version 2>&1
+            if ($LASTEXITCODE -eq 0 -or $testOut -match "Python") {
+                $PythonExe = $cand
+                break
+            }
+        } catch {}
     }
 }
 
 if (-not $PythonExe) {
-    Write-Host "[!] Error: Python executable not found." -ForegroundColor Red
+    Write-Host "[!] Error: Working Python executable not found." -ForegroundColor Red
     exit 1
 }
 
 if ($Mode -eq "test") {
     Write-Host "`n[+] Executing Automated Backend Pytest Suite..." -ForegroundColor Yellow
     $env:PYTHONPATH = "$WorkspaceRoot\backend"
-    & $PythonExe -m pytest "$WorkspaceRoot\backend\tests" -v
-    exit 0
+    & $PythonExe -m pytest "$WorkspaceRoot\backend\tests" -q
+    exit $LASTEXITCODE
 }
 
 if ($Mode -eq "backend" -or $Mode -eq "all") {
