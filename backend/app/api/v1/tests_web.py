@@ -53,81 +53,85 @@ async def queue_web_test(
         )
 
     # 4. Resolve or create project within the user's workspace
-    project = None
-    if payload.project_id:
-        p_res = await db.execute(
-            select(Project).where(Project.id == payload.project_id, Project.workspace_id == workspace_id)
-        )
-        project = p_res.scalars().first()
-
-    if not project:
-        from urllib.parse import urlparse
-        domain = urlparse(payload.target_url).hostname or "Web Project"
-        # Check if project already exists for this domain or target_url
-        p_res = await db.execute(
-            select(Project).where(
-                Project.workspace_id == workspace_id,
-                (Project.target_url == payload.target_url) | (Project.name == domain)
+    try:
+        project = None
+        if payload.project_id:
+            p_res = await db.execute(
+                select(Project).where(Project.id == payload.project_id, Project.workspace_id == workspace_id)
             )
-        )
-        project = p_res.scalars().first()
+            project = p_res.scalars().first()
 
-    if not project:
-        from urllib.parse import urlparse
-        domain = urlparse(payload.target_url).hostname or "Web Project"
-        project = Project(
-            workspace_id=workspace_id,
-            name=f"{domain}",
-            type="WEB",
-            target_url=payload.target_url
-        )
-        db.add(project)
-        await db.commit()
-        await db.refresh(project)
+        if not project:
+            from urllib.parse import urlparse
+            domain = urlparse(payload.target_url).hostname or "Web Project"
+            # Check if project already exists for this domain or target_url
+            p_res = await db.execute(
+                select(Project).where(
+                    Project.workspace_id == workspace_id,
+                    (Project.target_url == payload.target_url) | (Project.name == domain)
+                )
+            )
+            project = p_res.scalars().first()
 
-    project_id = project.id
-    project_name = project.name
+        if not project:
+            from urllib.parse import urlparse
+            domain = urlparse(payload.target_url).hostname or "Web Project"
+            project = Project(
+                workspace_id=workspace_id,
+                name=f"{domain}",
+                type="WEB",
+                target_url=payload.target_url
+            )
+            db.add(project)
+            await db.commit()
+            await db.refresh(project)
 
-    # Determine execution mode based on configuration selection
-    if payload.device_profile_ids and len(payload.device_profile_ids) > 1:
-        mode = "MULTI_COMPARISON"
-        tier_label = f"{len(payload.device_profile_ids)} Devices"
-    elif payload.custom_profiles and len(payload.custom_profiles) > 1:
-        mode = "MULTI_COMPARISON"
-        tier_label = f"{len(payload.custom_profiles)} Custom Devices"
-    elif payload.tier == "BOTH":
-        mode = "DUAL_COMPARISON"
-        tier_label = "BOTH"
-    else:
-        mode = "SINGLE_RUN"
-        tier_label = payload.tier or (payload.device_profile_ids[0] if payload.device_profile_ids else "CUSTOM")
+        project_id = project.id
+        project_name = project.name
 
-    # 5. Register in job store
-    await job_store.create_job(
-        job_id=job_id,
-        target_url=payload.target_url,
-        tier=tier_label,
-        mode=mode,
-        workspace_id=workspace_id,
-        project_id=project_id
-    )
+        # Determine execution mode based on configuration selection
+        if payload.device_profile_ids and len(payload.device_profile_ids) > 1:
+            mode = "MULTI_COMPARISON"
+            tier_label = f"{len(payload.device_profile_ids)} Devices"
+        elif payload.custom_profiles and len(payload.custom_profiles) > 1:
+            mode = "MULTI_COMPARISON"
+            tier_label = f"{len(payload.custom_profiles)} Custom Devices"
+        elif payload.tier == "BOTH":
+            mode = "DUAL_COMPARISON"
+            tier_label = "BOTH"
+        else:
+            mode = "SINGLE_RUN"
+            tier_label = payload.tier or (payload.device_profile_ids[0] if payload.device_profile_ids else "CUSTOM")
 
-    # 6. Dispatch via in-process asyncio task with task handle registration for clean preemption
-    task = asyncio.create_task(
-        orchestrate_web_test_job(
+        # 5. Register in job store
+        await job_store.create_job(
             job_id=job_id,
             target_url=payload.target_url,
-            tier=payload.tier or "GOOD_BUDGET",
+            tier=tier_label,
             mode=mode,
-            project_id=project_id,
             workspace_id=workspace_id,
-            workspace_name=workspace_name,
-            project_name=project_name,
-            device_profile_ids=payload.device_profile_ids,
-            custom_profiles=payload.custom_profiles
+            project_id=project_id
         )
-    )
-    job_store.register_active_task(job_id, task)
+
+        # 6. Dispatch via in-process asyncio task with task handle registration for clean preemption
+        task = asyncio.create_task(
+            orchestrate_web_test_job(
+                job_id=job_id,
+                target_url=payload.target_url,
+                tier=payload.tier or "GOOD_BUDGET",
+                mode=mode,
+                project_id=project_id,
+                workspace_id=workspace_id,
+                workspace_name=workspace_name,
+                project_name=project_name,
+                device_profile_ids=payload.device_profile_ids,
+                custom_profiles=payload.custom_profiles
+            )
+        )
+        job_store.register_active_task(job_id, task)
+    except Exception as exc:
+        await concurrency_manager.release_workspace_slot(workspace_id, job_id, payload.target_url)
+        raise exc
 
     response.status_code = status.HTTP_202_ACCEPTED
     return {
@@ -273,6 +277,7 @@ async def cancel_web_job(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Job cannot be cancelled (it may have already completed or failed)."
         )
+    await concurrency_manager.release_workspace_slot(ws.id, job_id)
     return {
         "job_id": job_id,
         "status": "CANCELLED",

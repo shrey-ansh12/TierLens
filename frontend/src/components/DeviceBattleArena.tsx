@@ -131,6 +131,8 @@ export default function DeviceBattleArena({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [selectedDeviceIndex, setSelectedDeviceIndex] = useState<number | null>(null);
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
+  const [currentStage, setCurrentStage] = useState<string>("Initializing Benchmark...");
+  const [progressMsg, setProgressMsg] = useState<string>("Preparing device profiles...");
 
   const togglePreset = (id: string) => {
     setPresets((prev) =>
@@ -152,6 +154,8 @@ export default function DeviceBattleArena({
     setErrorMsg(null);
     setIsRunning(true);
     setComparisonData(null);
+    setCurrentStage("Initializing Benchmark...");
+    setProgressMsg("Allocating device execution profiles...");
 
     try {
       // Map selected presets to custom profile payload
@@ -199,6 +203,9 @@ export default function DeviceBattleArena({
       try {
         const statusRes = await ApiClient.getWebJobStatus(activeJobId);
         if (!active) return;
+
+        if (statusRes.stage) setCurrentStage(statusRes.stage);
+        if (statusRes.progress_message) setProgressMsg(statusRes.progress_message);
 
         if (
           statusRes.status === "COMPLETED" ||
@@ -347,6 +354,52 @@ export default function DeviceBattleArena({
           </div>
         )}
       </div>
+
+      {/* Live Benchmark Execution Status Banner */}
+      {isRunning && (
+        <div className="bg-white border border-[#D97745]/30 rounded-xl p-5 shadow-xs animate-in fade-in duration-300">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[#E6E2D9]">
+            <div className="flex items-center gap-3">
+              <span className="w-9 h-9 rounded-lg bg-[#F8E9DF] text-[#D97745] flex items-center justify-center shrink-0">
+                <Play className="w-4 h-4 fill-current animate-pulse" />
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-bold text-[#252525] uppercase tracking-wider">
+                    Benchmarking Device Fleet ({selectedCount} Profiles)
+                  </h4>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#D97745]/15 text-[#D97745] font-semibold animate-pulse">
+                    RUNNING
+                  </span>
+                </div>
+                <p className="text-xs text-[#6B6B65] mt-0.5">
+                  {currentStage}: {progressMsg}
+                </p>
+              </div>
+            </div>
+
+            {onOpenLiveArena && activeJobId && (
+              <button
+                onClick={() => onOpenLiveArena(activeJobId)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FAF9F5] hover:bg-[#EEECE5] border border-[#E6E2D9] text-[#D97745] text-xs font-semibold rounded-lg transition-colors self-start sm:self-auto shadow-2xs"
+              >
+                <span>Watch Live Streaming Logs</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="mt-3">
+            <div className="w-full bg-[#EAE7DF] h-1.5 rounded-full overflow-hidden">
+              <div className="bg-[#D97745] h-full rounded-full animate-pulse w-full" />
+            </div>
+            <div className="flex justify-between items-center text-[10px] text-[#96948D] mt-1.5 font-mono">
+              <span>Job ID: {activeJobId || "Initializing..."}</span>
+              <span>Measuring LCP, FCP, CLS, TTFB, and Long Tasks</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Results Overview: Best & Worst Performers Callouts */}
       {comparisonData && (
