@@ -55,3 +55,35 @@ body {
 .transition-warm {
   transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+/* Smooth Tab Entrance Animation */
+@keyframes tabEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-tab-enter {
+  animation: tabEnter 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Smooth Banner / Alert Slide Down */
+@keyframes bannerSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-banner-enter {
+  animation: bannerSlideDown 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

@@ -1020,8 +1020,8 @@ export default function TierLensApp() {
             </div>
             <button
               onClick={() => navigateToTab("overview")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "overview" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
+                activeTab === "overview" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5 shadow-sm" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
               }`}
             >
               <Activity className="w-4 h-4 text-[#D97745]" />
@@ -1029,8 +1029,8 @@ export default function TierLensApp() {
             </button>
             <button
               onClick={() => navigateToTab("web_test")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "web_test" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
+                activeTab === "web_test" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5 shadow-sm" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
               }`}
             >
               <Globe className="w-4 h-4 text-[#D97745]" />
@@ -1038,8 +1038,8 @@ export default function TierLensApp() {
             </button>
             <button
               onClick={() => navigateToTab("live_arena")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "live_arena" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
+                activeTab === "live_arena" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5 shadow-sm" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
               }`}
             >
               <Terminal className="w-4 h-4 text-[#D97745]" />
@@ -1047,8 +1047,8 @@ export default function TierLensApp() {
             </button>
             <button
               onClick={() => navigateToTab("battle_arena")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "battle_arena" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
+                activeTab === "battle_arena" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5 shadow-sm" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
               }`}
             >
               <GitCompare className="w-4 h-4 text-[#D97745]" />
@@ -1056,8 +1056,8 @@ export default function TierLensApp() {
             </button>
             <button
               onClick={() => navigateToTab("device_builder")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "device_builder" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
+                activeTab === "device_builder" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5 shadow-sm" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
               }`}
             >
               <Sliders className="w-4 h-4 text-[#D97745]" />
@@ -1065,8 +1065,8 @@ export default function TierLensApp() {
             </button>
             <button
               onClick={() => navigateToTab("android_test")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "android_test" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
+                activeTab === "android_test" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5 shadow-sm" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
               }`}
             >
               <Smartphone className="w-4 h-4 text-[#36865A]" />
@@ -1074,8 +1074,8 @@ export default function TierLensApp() {
             </button>
             <button
               onClick={() => navigateToTab("device_lab")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "device_lab" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
+                activeTab === "device_lab" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5 shadow-sm" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
               }`}
             >
               <Radio className="w-4 h-4 text-purple-400" />
@@ -1087,8 +1087,8 @@ export default function TierLensApp() {
             </div>
             <button
               onClick={() => navigateToTab("compare")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "compare" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
+                activeTab === "compare" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5 shadow-sm" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
               }`}
             >
               <GitCompare className="w-4 h-4 text-[#D97745]" />
@@ -1096,8 +1096,8 @@ export default function TierLensApp() {
             </button>
             <button
               onClick={() => navigateToTab("failures")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "failures" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
+                activeTab === "failures" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5 shadow-sm" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
               }`}
             >
               <AlertOctagon className="w-4 h-4 text-[#C6534B]" />
@@ -1105,8 +1105,8 @@ export default function TierLensApp() {
             </button>
             <button
               onClick={() => navigateToTab("rca")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "rca" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
+                activeTab === "rca" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5 shadow-sm" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
               }`}
             >
               <Brain className="w-4 h-4 text-pink-400" />
@@ -1114,8 +1114,8 @@ export default function TierLensApp() {
             </button>
             <button
               onClick={() => navigateToTab("graph")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "graph" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
+                activeTab === "graph" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5 shadow-sm" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
               }`}
             >
               <Database className="w-4 h-4 text-[#D97745]" />
@@ -1123,8 +1123,8 @@ export default function TierLensApp() {
             </button>
             <button
               onClick={() => navigateToTab("reports")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "reports" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
+                activeTab === "reports" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5 shadow-sm" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
               }`}
             >
               <FileText className="w-4 h-4 text-[#D97745]" />
@@ -1132,8 +1132,8 @@ export default function TierLensApp() {
             </button>
             <button
               onClick={() => navigateToTab("optimizations")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "optimizations" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
+                activeTab === "optimizations" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5 shadow-sm" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
               }`}
             >
               <CheckCircle2 className="w-4 h-4 text-[#36865A]" />
@@ -1145,8 +1145,8 @@ export default function TierLensApp() {
             </div>
             <button
               onClick={() => navigateToTab("reports")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "reports" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
+                activeTab === "reports" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5 shadow-sm" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
               }`}
             >
               <FileText className="w-4 h-4 text-[#6B6B65]" />
@@ -1154,8 +1154,8 @@ export default function TierLensApp() {
             </button>
             <button
               onClick={() => navigateToTab("settings")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "settings" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
+                activeTab === "settings" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5 shadow-sm" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
               }`}
             >
               <Settings className="w-4 h-4 text-[#6B6B65]" />
@@ -1163,8 +1163,8 @@ export default function TierLensApp() {
             </button>
             <button
               onClick={() => navigateToTab("docs")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === "docs" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
+                activeTab === "docs" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5 shadow-sm" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
               }`}
             >
               <BookOpen className="w-4 h-4 text-[#6B6B65]" />
@@ -1215,21 +1215,21 @@ export default function TierLensApp() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => { refreshHealth(); loadProfiles(); }}
-              className="text-[11px] text-[#6B6B65] hover:text-[#252525] flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#EEECE5] hover:bg-[#EAE7DF] border border-[#E6E2D9] transition font-medium"
+              className="text-[11px] text-[#6B6B65] hover:text-[#252525] flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#EEECE5] hover:bg-[#EAE7DF] border border-[#E6E2D9] transition-warm active:scale-95 font-medium group"
             >
-              <RefreshCw className="w-3 h-3 text-[#D97745]" /> Refresh Diagnostics
+              <RefreshCw className="w-3 h-3 text-[#D97745] group-hover:rotate-180 transition-transform duration-500" /> Refresh Diagnostics
             </button>
           </div>
         </header>
 
         {/* ERROR / NOTIFICATION BANNER */}
         {errorBanner && (
-          <div className="bg-[#FBEBEA] border-b border-[#F5C6C3] px-6 py-2.5 text-xs text-[#C6534B] flex items-center justify-between">
+          <div className="bg-[#FBEBEA] border-b border-[#F5C6C3] px-6 py-2.5 text-xs text-[#C6534B] flex items-center justify-between animate-banner-enter">
             <div className="flex items-center gap-2">
               <AlertOctagon className="w-4 h-4 text-[#C6534B] shrink-0" />
               <span>{errorBanner}</span>
             </div>
-            <button onClick={() => setErrorBanner(null)} className="text-[#C6534B] hover:text-[#252525]">
+            <button onClick={() => setErrorBanner(null)} className="text-[#C6534B] hover:text-[#252525] active:scale-95 transition-transform">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -1242,8 +1242,8 @@ export default function TierLensApp() {
           {/* TAB: OVERVIEW */}
           {/* ========================================================================= */}
           {activeTab === "overview" && (
-            <div className="space-y-6">
-              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm">
+            <div className="space-y-6 animate-tab-enter">
+              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#D97745]/40">
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-lg font-bold text-[#252525] flex items-center gap-2">
@@ -1258,7 +1258,7 @@ export default function TierLensApp() {
                   </div>
                   <button
                     onClick={() => navigateToTab("device_builder")}
-                    className="px-4 py-2 bg-[#D97745] hover:bg-[#B95E32] text-white shadow-warm font-medium text-xs rounded-lg transition flex items-center gap-1.5 shadow-md shadow-blue-600/20"
+                    className="px-4 py-2 bg-[#D97745] hover:bg-[#B95E32] text-white shadow-warm font-medium text-xs rounded-lg transition-warm active:scale-95 flex items-center gap-1.5"
                   >
                     <Plus className="w-3.5 h-3.5" /> Configure Device
                   </button>
@@ -1268,11 +1268,11 @@ export default function TierLensApp() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
                   <div
                     onClick={() => navigateToTab("web_test")}
-                    className="p-4 rounded-lg bg-[#FAF9F6] border border-[#E6E2D9] hover:border-[#D97745]/50 cursor-pointer transition group"
+                    className="p-4 rounded-lg bg-[#FAF9F6] border border-[#E6E2D9] hover:border-[#D97745]/50 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md group active:scale-[0.99]"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <Globe className="w-5 h-5 text-[#D97745]" />
-                      <ChevronRight className="w-4 h-4 text-[#6B6B65] group-hover:text-[#D97745] transition" />
+                      <ChevronRight className="w-4 h-4 text-[#6B6B65] group-hover:text-[#D97745] group-hover:translate-x-1 transition-all duration-200" />
                     </div>
                     <div className="font-semibold text-xs text-[#252525]">Execute Multi-Device Web Test</div>
                     <p className="text-[11px] text-[#6B6B65] mt-1">
@@ -1282,11 +1282,11 @@ export default function TierLensApp() {
 
                   <div
                     onClick={() => navigateToTab("device_builder")}
-                    className="p-4 rounded-lg bg-[#FAF9F6] border border-[#E6E2D9] hover:border-indigo-500/50 cursor-pointer transition group"
+                    className="p-4 rounded-lg bg-[#FAF9F6] border border-[#E6E2D9] hover:border-[#D97745]/50 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md group active:scale-[0.99]"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <Sliders className="w-5 h-5 text-[#D97745]" />
-                      <ChevronRight className="w-4 h-4 text-[#6B6B65] group-hover:text-[#D97745] transition" />
+                      <ChevronRight className="w-4 h-4 text-[#6B6B65] group-hover:text-[#D97745] group-hover:translate-x-1 transition-all duration-200" />
                     </div>
                     <div className="font-semibold text-xs text-[#252525]">Device Configuration Builder</div>
                     <p className="text-[11px] text-[#6B6B65] mt-1">
@@ -1296,11 +1296,11 @@ export default function TierLensApp() {
 
                   <div
                     onClick={() => navigateToTab("compare")}
-                    className="p-4 rounded-lg bg-[#FAF9F6] border border-[#E6E2D9] hover:border-[#36865A]/50 cursor-pointer transition group"
+                    className="p-4 rounded-lg bg-[#FAF9F6] border border-[#E6E2D9] hover:border-[#36865A]/50 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md group active:scale-[0.99]"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <GitCompare className="w-5 h-5 text-[#36865A]" />
-                      <ChevronRight className="w-4 h-4 text-[#6B6B65] group-hover:text-[#36865A] transition" />
+                      <ChevronRight className="w-4 h-4 text-[#6B6B65] group-hover:text-[#36865A] group-hover:translate-x-1 transition-all duration-200" />
                     </div>
                     <div className="font-semibold text-xs text-[#252525]">Performance Comparison</div>
                     <p className="text-[11px] text-[#6B6B65] mt-1">
@@ -1311,7 +1311,7 @@ export default function TierLensApp() {
               </div>
 
               {/* Saved Profiles Snapshot */}
-              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm">
+              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#D97745]/40">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="text-sm font-bold text-[#252525] flex items-center gap-2">
@@ -1324,15 +1324,15 @@ export default function TierLensApp() {
                   </div>
                   <button
                     onClick={() => navigateToTab("device_builder")}
-                    className="text-xs text-[#D97745] hover:text-blue-300 font-semibold flex items-center gap-1"
+                    className="text-xs text-[#D97745] hover:text-[#B95E32] font-semibold flex items-center gap-1 group active:scale-95 transition-all"
                   >
-                    Manage Profiles <ChevronRight className="w-3.5 h-3.5" />
+                    Manage Profiles <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-200" />
                   </button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {savedProfiles.slice(0, 6).map((p) => (
-                    <div key={p.id} className="p-3.5 rounded-lg bg-[#FAF9F6] border border-[#E6E2D9] space-y-2">
+                    <div key={p.id} className="p-3.5 rounded-lg bg-[#FAF9F6] border border-[#E6E2D9] space-y-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#D97745]/40">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-xs text-[#252525] truncate max-w-[180px]">{p.name}</span>
                         <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono ${
@@ -1357,9 +1357,9 @@ export default function TierLensApp() {
           {/* TAB: DEVICE CONFIGURATION BUILDER */}
           {/* ========================================================================= */}
           {activeTab === "device_builder" && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-tab-enter">
               {/* Header Card */}
-              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm">
+              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#D97745]/40">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
                     <h2 className="text-base font-bold text-[#252525] flex items-center gap-2">
@@ -1371,7 +1371,7 @@ export default function TierLensApp() {
                     </p>
                   </div>
                   {builderSuccessMsg && (
-                    <div className="px-3 py-1.5 rounded bg-emerald-500/10 border border-[#36865A]/30 text-emerald-300 text-xs flex items-center gap-1.5">
+                    <div className="px-3 py-1.5 rounded bg-emerald-500/10 border border-[#36865A]/30 text-emerald-300 text-xs flex items-center gap-1.5 animate-banner-enter">
                       <CheckCircle2 className="w-4 h-4 text-[#36865A] shrink-0" />
                       <span>{builderSuccessMsg}</span>
                     </div>
@@ -1389,9 +1389,9 @@ export default function TierLensApp() {
                         key={tpl.name}
                         type="button"
                         onClick={() => handleApplyPresetTemplate(tpl)}
-                        className={`px-2.5 py-1 rounded text-xs transition border ${
+                        className={`px-2.5 py-1 rounded text-xs transition-warm active:scale-95 border ${
                           builderName === tpl.name
-                            ? "bg-indigo-600 text-white border-indigo-500"
+                            ? "bg-indigo-600 text-white border-indigo-500 shadow-sm"
                             : "bg-[#FAF9F6] text-[#252525] border-[#E6E2D9] hover:border-slate-500"
                         }`}
                       >
@@ -1792,7 +1792,7 @@ export default function TierLensApp() {
                     <button
                       type="button"
                       onClick={() => handleApplyPresetTemplate(PRESET_TEMPLATES[0])}
-                      className="px-4 py-2 bg-[#EEECE5] hover:bg-slate-700 text-[#252525] text-xs rounded-lg transition"
+                      className="px-4 py-2 bg-[#EEECE5] hover:bg-[#EAE7DF] text-[#252525] text-xs rounded-lg transition-warm active:scale-95"
                     >
                       Reset Form to Default Preset
                     </button>
@@ -1801,7 +1801,7 @@ export default function TierLensApp() {
                       <button
                         type="submit"
                         disabled={isSavingProfile}
-                        className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs rounded-lg transition flex items-center gap-2 shadow-md shadow-indigo-600/20 disabled:opacity-50"
+                        className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs rounded-lg transition-warm active:scale-[0.98] flex items-center gap-2 shadow-md shadow-indigo-600/20 disabled:opacity-50"
                       >
                         {isSavingProfile ? <RotateCcw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                         {builderId && savedProfiles.find(p => p.id === builderId)?.is_custom ? "Update Custom Profile" : "Save as New Custom Profile"}
@@ -1812,7 +1812,7 @@ export default function TierLensApp() {
               </div>
 
               {/* Saved Configurations Library */}
-              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm space-y-4">
+              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm space-y-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#D97745]/40">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-bold text-[#252525] flex items-center gap-2">
@@ -1829,10 +1829,10 @@ export default function TierLensApp() {
                   {savedProfiles.map(p => (
                     <div
                       key={p.id}
-                      className={`p-4 rounded-xl border transition ${
+                      className={`p-4 rounded-xl border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
                         builderId === p.id
-                          ? "bg-[#131F3A] border-indigo-500"
-                          : "bg-[#FAF9F6] border-[#E6E2D9] hover:border-slate-600"
+                          ? "bg-[#131F3A] border-indigo-500 text-white"
+                          : "bg-[#FAF9F6] border-[#E6E2D9] hover:border-[#D97745]/40"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -1911,8 +1911,8 @@ export default function TierLensApp() {
           {/* TAB: WEBSITE TESTING (MULTI-DEVICE RUNNER) */}
           {/* ========================================================================= */}
           {activeTab === "web_test" && (
-            <div className="space-y-6">
-              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm">
+            <div className="space-y-6 animate-tab-enter">
+              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#D97745]/40">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h2 className="text-base font-bold text-[#252525] flex items-center gap-2">
@@ -1926,7 +1926,7 @@ export default function TierLensApp() {
                   <button
                     type="button"
                     onClick={() => navigateToTab("device_builder")}
-                    className="text-xs text-[#D97745] hover:text-indigo-300 font-semibold flex items-center gap-1"
+                    className="text-xs text-[#D97745] hover:text-[#B95E32] font-semibold flex items-center gap-1 group active:scale-95 transition-all"
                   >
                     <Sliders className="w-3.5 h-3.5" /> Open Device Builder
                   </button>
@@ -2240,7 +2240,7 @@ export default function TierLensApp() {
                   <button
                     type="submit"
                     disabled={isRunningTest}
-                    className="px-6 py-2.5 bg-blue-600 hover:bg-[#F8E9DF]0 disabled:opacity-50 text-white font-medium text-xs rounded-lg transition flex items-center gap-2 shadow-md shadow-blue-600/20"
+                    className="px-6 py-2.5 bg-[#D97745] hover:bg-[#B95E32] disabled:opacity-50 text-white font-medium text-xs rounded-lg transition-warm active:scale-[0.98] flex items-center gap-2 shadow-warm shadow-md"
                   >
                     {isRunningTest ? <RotateCcw className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
                     {isRunningTest ? "Executing Background Suite..." : "Execute Performance Test"}
@@ -2308,7 +2308,7 @@ export default function TierLensApp() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleOpenAuditReport(comparisonData || testResult?.single_run_data || testResult)}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-[#D97745] hover:bg-[#B95E32] text-white text-xs font-semibold rounded-lg transition-colors shadow-xs"
+                        className="flex items-center gap-1.5 px-3 py-2 bg-[#D97745] hover:bg-[#B95E32] text-white text-xs font-semibold rounded-lg transition-warm active:scale-95 shadow-xs"
                       >
                         <FileText className="w-3.5 h-3.5" />
                         <span>Interactive Audit Report</span>
@@ -2318,14 +2318,14 @@ export default function TierLensApp() {
                           if (activeJob?.job_id) setLiveArenaJobId(activeJob.job_id);
                           navigateToTab("live_arena");
                         }}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-[#FAF9F5] hover:bg-[#EEECE5] border border-[#E6E2D9] text-[#252525] text-xs font-semibold rounded-lg transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-2 bg-[#FAF9F5] hover:bg-[#EEECE5] border border-[#E6E2D9] text-[#252525] text-xs font-semibold rounded-lg transition-warm active:scale-95"
                       >
                         <Terminal className="w-3.5 h-3.5 text-[#D97745]" />
                         <span>Live Arena</span>
                       </button>
                       <button
                         onClick={() => navigateToTab("battle_arena")}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-[#FAF9F5] hover:bg-[#EEECE5] border border-[#E6E2D9] text-[#252525] text-xs font-semibold rounded-lg transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-2 bg-[#FAF9F5] hover:bg-[#EEECE5] border border-[#E6E2D9] text-[#252525] text-xs font-semibold rounded-lg transition-warm active:scale-95"
                       >
                         <GitCompare className="w-3.5 h-3.5 text-[#D97745]" />
                         <span>Battle Arena</span>
@@ -2356,7 +2356,7 @@ export default function TierLensApp() {
 
                     {/* The ₹8,000 Cheap Phone Test Verdict (T1.2) */}
                     {comparisonData?.cheap_phone_verdict && (
-                      <div className={`p-4 rounded-xl border col-span-full shadow-sm ${
+                      <div className={`p-4 rounded-xl border col-span-full shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
                         comparisonData.cheap_phone_verdict.status === "PASSED"
                           ? "bg-[#EBF5F0] border border-[#CDE5D8] text-[#252525]"
                           : "bg-[#FBEBEA] border border-[#F5C6C3] text-[#252525]"
@@ -2373,7 +2373,7 @@ export default function TierLensApp() {
                             <span className="text-xs font-bold text-[#252525]">{comparisonData.cheap_phone_verdict.headline}</span>
                           </div>
                           {comparisonData.cheap_phone_verdict.status === "FAILED" && (
-                            <span className="text-[11px] font-mono font-bold text-[#C6534B] bg-red-100 border border-red-300 px-2 py-0.5 rounded">
+                            <span className="text-[11px] font-mono font-bold text-[#C6534B] bg-red-100 border border-red-300 px-2 py-0.5 rounded animate-pulse ring-1 ring-red-400/50 shadow-sm">
                               🚨 ~{comparisonData.cheap_phone_verdict.total_indian_users_at_risk_millions}M Users At Risk ({comparisonData.cheap_phone_verdict.market_share_at_risk_pct}% of India)
                             </span>
                           )}
@@ -2701,8 +2701,8 @@ export default function TierLensApp() {
           {/* TAB: DEVICE COMPARISON (STANDALONE EXPLORER) */}
           {/* ========================================================================= */}
           {activeTab === "compare" && (
-            <div className="space-y-6">
-              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm">
+            <div className="space-y-6 animate-tab-enter">
+              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#D97745]/40">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h2 className="text-base font-bold text-[#252525] flex items-center gap-2">
@@ -2725,7 +2725,7 @@ export default function TierLensApp() {
                     <p>No comparison execution loaded yet.</p>
                     <button
                       onClick={() => navigateToTab("web_test")}
-                      className="px-4 py-2 bg-[#D97745] hover:bg-[#B95E32] text-white shadow-warm rounded text-xs font-semibold"
+                      className="px-4 py-2 bg-[#D97745] hover:bg-[#B95E32] text-white shadow-warm rounded text-xs font-semibold transition-warm active:scale-95 shadow-md"
                     >
                       Go to Website Testing & Run Test
                     </button>
@@ -2795,8 +2795,8 @@ export default function TierLensApp() {
           {/* TAB: FAILURE EXPLORER */}
           {/* ========================================================================= */}
           {activeTab === "failures" && (
-            <div className="space-y-6">
-              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm">
+            <div className="space-y-6 animate-tab-enter">
+              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#D97745]/40">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h2 className="text-base font-bold text-[#252525] flex items-center gap-2">
@@ -2814,7 +2814,7 @@ export default function TierLensApp() {
 
                 {/* Cheap Phone Test Verdict Card */}
                 {comparisonData?.cheap_phone_verdict && (
-                  <div className={`p-4 rounded-xl border mb-6 ${
+                  <div className={`p-4 rounded-xl border mb-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
                     comparisonData.cheap_phone_verdict.status === "PASSED"
                       ? "bg-[#EBF5F0] border border-[#CDE5D8] text-[#252525]"
                       : "bg-[#FBEBEA] border border-[#F5C6C3] text-[#252525]"
@@ -2831,7 +2831,7 @@ export default function TierLensApp() {
                         <span className="text-xs font-bold">{comparisonData.cheap_phone_verdict.headline}</span>
                       </div>
                       {comparisonData.cheap_phone_verdict.status === "FAILED" && (
-                        <span className="text-[11px] font-mono font-bold text-[#C6534B] bg-red-100 border border-red-300 px-2 py-0.5 rounded">
+                        <span className="text-[11px] font-mono font-bold text-[#C6534B] bg-red-100 border border-red-300 px-2 py-0.5 rounded animate-pulse ring-1 ring-red-400/50 shadow-sm">
                           ~{comparisonData.cheap_phone_verdict.total_indian_users_at_risk_millions}M Users At Risk ({comparisonData.cheap_phone_verdict.market_share_at_risk_pct}% of India)
                         </span>
                       )}
@@ -2918,8 +2918,8 @@ export default function TierLensApp() {
           {/* TAB: ROOT CAUSE ANALYSIS */}
           {/* ========================================================================= */}
           {(activeTab === "rca" || activeTab === "optimizations") && (
-            <div className="space-y-6">
-              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm">
+            <div className="space-y-6 animate-tab-enter">
+              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#D97745]/40">
                 <h2 className="text-base font-bold text-[#252525] flex items-center gap-2 mb-2">
                   <Brain className="w-5 h-5 text-pink-400" />
                   Deterministic & AI-Assisted Root Cause Intelligence
@@ -2935,7 +2935,7 @@ export default function TierLensApp() {
                 ) : (
                   <div className="space-y-4">
                     {recommendations.map((r: any, idx: number) => (
-                      <div key={idx} className="p-5 rounded-xl bg-[#FAF9F6] border border-[#E6E2D9] space-y-3">
+                      <div key={idx} className="p-5 rounded-xl bg-[#FAF9F6] border border-[#E6E2D9] space-y-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-pink-300">
                         <div className="flex items-center justify-between">
                           <div className="font-bold text-sm text-[#252525]">{r.title}</div>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono ${
@@ -2961,15 +2961,17 @@ export default function TierLensApp() {
           {/* TAB: NEO4J INTELLIGENCE EXPLORER */}
           {/* ========================================================================= */}
           {activeTab === "graph" && (
-            <IntelligenceExplorer />
+            <div className="animate-tab-enter">
+              <IntelligenceExplorer />
+            </div>
           )}
 
           {/* ========================================================================= */}
           {/* TAB: ANDROID APK TESTING */}
           {/* ========================================================================= */}
           {activeTab === "android_test" && (
-            <div className="space-y-6">
-              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm">
+            <div className="space-y-6 animate-tab-enter">
+              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#D97745]/40">
                 <h2 className="text-base font-bold text-[#252525] flex items-center gap-2 mb-2">
                   <Smartphone className="w-5 h-5 text-[#36865A]" />
                   Engine B: Android APK Device Testing
@@ -2984,12 +2986,12 @@ export default function TierLensApp() {
                     type="file"
                     accept=".apk"
                     onChange={handleApkUpload}
-                    className="text-xs text-[#6B6B65] file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-[#F8E9DF]0"
+                    className="text-xs text-[#6B6B65] file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D97745] file:text-white hover:file:bg-[#B95E32] file:transition-warm file:active:scale-95"
                   />
                   {isUploadingApk && <div className="text-xs text-[#D97745] animate-pulse">Analyzing APK manifest...</div>}
 
                   {apkManifest && (
-                    <div className="mt-4 p-4 rounded-lg bg-[#FAF9F6] border border-[#E6E2D9] text-xs font-mono space-y-2">
+                    <div className="mt-4 p-4 rounded-lg bg-[#FAF9F6] border border-[#E6E2D9] text-xs font-mono space-y-2 animate-tab-enter">
                       <div>Package: <span className="text-[#36865A] font-bold">{apkManifest.package_name}</span></div>
                       <div>App Name: <span className="text-white">{apkManifest.app_name}</span></div>
                       <div>Version: <span className="text-[#252525]">{apkManifest.version_name} (Code: {apkManifest.version_code})</span></div>
@@ -3005,8 +3007,8 @@ export default function TierLensApp() {
           {/* TAB: DEVICE LAB */}
           {/* ========================================================================= */}
           {activeTab === "device_lab" && (
-            <div className="space-y-6">
-              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm">
+            <div className="space-y-6 animate-tab-enter">
+              <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#D97745]/40">
                 <h2 className="text-base font-bold text-[#252525] flex items-center gap-2 mb-2">
                   <Radio className="w-5 h-5 text-purple-400" />
                   Connected Device Lab & Tier Diagnostics
@@ -3016,7 +3018,7 @@ export default function TierLensApp() {
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 rounded-xl bg-[#FAF9F6] border border-[#E6E2D9] space-y-2">
+                  <div className="p-4 rounded-xl bg-[#FAF9F6] border border-[#E6E2D9] space-y-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#D97745]/40">
                     <span className="text-xs font-bold text-[#252525] block">ADB Host Daemon</span>
                     <div className="text-xs font-mono text-[#6B6B65]">
                       Status: <span className={deviceLabStatus?.adb_available ? "text-[#36865A] font-bold" : "text-[#C58A35]"}>
@@ -3029,7 +3031,7 @@ export default function TierLensApp() {
                   </div>
 
                   {/* Good Budget */}
-                  <div className="p-5 rounded-xl bg-[#FAF9F6] border border-[#F1D5C4] space-y-4">
+                  <div className="p-5 rounded-xl bg-[#FAF9F6] border border-[#F1D5C4] space-y-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#D97745]/40">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-sm text-blue-700">Good Budget Tier</span>
                       <span className="text-[10px] font-mono bg-blue-100 text-blue-800 border border-[#F1D5C4] px-2 py-0.5 rounded font-semibold">~₹15,000 Bracket (24.8% of India)</span>
@@ -3056,10 +3058,10 @@ export default function TierLensApp() {
                   </div>
 
                   {/* Entry-Level */}
-                  <div className="p-5 rounded-xl bg-[#FAF9F6] border border-sky-200 space-y-4">
+                  <div className="p-5 rounded-xl bg-[#FAF9F6] border border-sky-200 space-y-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-sky-300">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-sm text-sky-700">The ₹8,000 Cheap Phone Test Tier</span>
-                      <span className="text-[10px] font-mono bg-sky-100 text-sky-800 border border-sky-200 px-2 py-0.5 rounded font-semibold">~₹8,000 / $100 (38.5% of India)</span>
+                      <span className="text-[10px] font-mono bg-sky-100 text-sky-800 border border-sky-200 px-2 py-0.5 rounded font-semibold animate-pulse ring-1 ring-sky-400/50 shadow-sm">~₹8,000 / $100 (38.5% of India)</span>
                     </div>
                     <p className="text-xs text-[#6B6B65]">Representative of Redmi 9A / Poco C51 / JioPhone Next / Unisoc SC9863A.</p>
                     <div className="space-y-2 text-xs font-mono">
@@ -3098,7 +3100,7 @@ export default function TierLensApp() {
           {/* TAB: DOCUMENTATION & SETTINGS */}
           {/* ========================================================================= */}
           {activeTab === "docs" && (
-            <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm text-xs text-[#252525] space-y-4">
+            <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm text-xs text-[#252525] space-y-4 animate-tab-enter transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#D97745]/40">
               <h2 className="text-base font-bold text-[#252525]">TierLens Architecture & Testing Methodology</h2>
               <p>
                 TierLens is an enterprise device intelligence platform enabling developers to test web applications
@@ -3114,7 +3116,7 @@ export default function TierLensApp() {
           )}
 
           {activeTab === "settings" && (
-            <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm text-xs text-[#252525] space-y-4">
+            <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm text-xs text-[#252525] space-y-4 animate-tab-enter transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#D97745]/40">
               <h2 className="text-base font-bold text-[#252525]">Platform Settings</h2>
               <div className="space-y-2 font-mono">
                 <div>PostgreSQL DB: <span className="text-[#36865A]">ep-mute-sun-bi9ugppk.aws.neon.tech</span></div>
@@ -3128,56 +3130,62 @@ export default function TierLensApp() {
           {/* TAB: LIVE TESTING ARENA */}
           {/* ========================================================================= */}
           {activeTab === "live_arena" && (
-            <LiveTestingArena
-              initialJobId={liveArenaJobId || activeJob?.job_id}
-              onOpenAuditReport={async (jId, runId, payload) => {
-                if (payload) {
-                  handleOpenAuditReport(payload);
-                  return;
-                }
-                if (jId) {
-                  try {
-                    const res = await ApiClient.getWebJobStatus(jId);
-                    const data = res?.comparison_data || res?.single_run_data || res;
-                    if (data) {
-                      handleOpenAuditReport(data);
-                      return;
-                    }
-                  } catch (e) {
-                    console.error("Failed to load audit report for job:", e);
+            <div className="animate-tab-enter">
+              <LiveTestingArena
+                initialJobId={liveArenaJobId || activeJob?.job_id}
+                onOpenAuditReport={async (jId, runId, payload) => {
+                  if (payload) {
+                    handleOpenAuditReport(payload);
+                    return;
                   }
-                }
-                handleOpenAuditReport(comparisonData || testResult?.single_run_data || testResult);
-              }}
-              onOpenDeviceArena={(url) => { setTestUrl(url); navigateToTab("battle_arena"); }}
-              onOpenGraph={() => navigateToTab("graph")}
-            />
+                  if (jId) {
+                    try {
+                      const res = await ApiClient.getWebJobStatus(jId);
+                      const data = res?.comparison_data || res?.single_run_data || res;
+                      if (data) {
+                        handleOpenAuditReport(data);
+                        return;
+                      }
+                    } catch (e) {
+                      console.error("Failed to load audit report for job:", e);
+                    }
+                  }
+                  handleOpenAuditReport(comparisonData || testResult?.single_run_data || testResult);
+                }}
+                onOpenDeviceArena={(url) => { setTestUrl(url); navigateToTab("battle_arena"); }}
+                onOpenGraph={() => navigateToTab("graph")}
+              />
+            </div>
           )}
 
           {/* ========================================================================= */}
           {/* TAB: DEVICE BATTLE ARENA */}
           {/* ========================================================================= */}
           {activeTab === "battle_arena" && (
-            <DeviceBattleArena
-              initialUrl={testUrl}
-              onOpenAuditReport={(compId, runId, payload) => {
-                if (payload) {
-                  handleOpenAuditReport(payload);
-                } else {
-                  handleOpenAuditReport(comparisonData || testResult?.single_run_data || testResult);
-                }
-              }}
-              onOpenLiveArena={(jId) => { setLiveArenaJobId(jId); navigateToTab("live_arena"); }}
-            />
+            <div className="animate-tab-enter">
+              <DeviceBattleArena
+                initialUrl={testUrl}
+                onOpenAuditReport={(compId, runId, payload) => {
+                  if (payload) {
+                    handleOpenAuditReport(payload);
+                  } else {
+                    handleOpenAuditReport(comparisonData || testResult?.single_run_data || testResult);
+                  }
+                }}
+                onOpenLiveArena={(jId) => { setLiveArenaJobId(jId); navigateToTab("live_arena"); }}
+              />
+            </div>
           )}
 
           {/* ========================================================================= */}
           {/* TAB: AUDIT REPORTS */}
           {/* ========================================================================= */}
           {activeTab === "reports" && (
-            <AuditReportsView
-              onSelectRunForReport={(r) => handleOpenAuditReport(r)}
-            />
+            <div className="animate-tab-enter">
+              <AuditReportsView
+                onSelectRunForReport={(r) => handleOpenAuditReport(r)}
+              />
+            </div>
           )}
 
         </div>
