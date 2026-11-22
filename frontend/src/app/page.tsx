@@ -434,6 +434,15 @@ export default function TierLensApp() {
   const handleOpenAuditReport = (data: any) => {
     setAuditReportData(data);
     setIsAuditModalOpen(true);
+    if (data) {
+      const comp = data.comparison_data || data;
+      setComparisonData(comp);
+      if (Array.isArray(data.recommendations) && data.recommendations.length > 0) {
+        setRecommendations(data.recommendations);
+      } else if (Array.isArray(comp.recommendations) && comp.recommendations.length > 0) {
+        setRecommendations(comp.recommendations);
+      }
+    }
   };
 
   const handleOpenVisualEvidence = (failuresList: any[], screenshot?: string, devName?: string) => {
@@ -562,6 +571,19 @@ export default function TierLensApp() {
     try {
       const gStatus = await ApiClient.getGraphStatus();
       setGraphData((prev: any) => ({ ...prev, connected: gStatus.connected, error: gStatus.error }));
+    } catch (e) {
+      // Ignored
+    }
+
+    try {
+      const reports = await ApiClient.getAuditReports({ limit: 1 });
+      if (reports && reports.length > 0) {
+        const latest = reports[0];
+        setComparisonData((prev: any) => prev || latest);
+        if (latest.recommendations && latest.recommendations.length > 0) {
+          setRecommendations((prev: any[]) => (prev && prev.length > 0 ? prev : latest.recommendations));
+        }
+      }
     } catch (e) {
       // Ignored
     }
@@ -2775,6 +2797,14 @@ export default function TierLensApp() {
                   </span>
                 </div>
 
+                {/* Active Tested Website Banner */}
+                {(comparisonData?.target_url || comparisonData?.entry_level_run?.target_url || comparisonData?.runs?.[0]?.target_url) && (
+                  <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-[#FAF9F5] border border-[#E6E2D9] rounded-lg text-xs font-mono">
+                    <span className="text-[#6B6B65]">Active Target:</span>
+                    <span className="text-[#D97745] font-bold">{comparisonData?.target_url || comparisonData?.entry_level_run?.target_url || comparisonData?.runs?.[0]?.target_url}</span>
+                  </div>
+                )}
+
                 {/* Cheap Phone Test Verdict Card */}
                 {comparisonData?.cheap_phone_verdict && (
                   <div className={`p-4 rounded-xl border mb-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
@@ -2805,13 +2835,13 @@ export default function TierLensApp() {
                   </div>
                 )}
 
-                {(!(comparisonData?.ranked_failures?.length > 0) && (!comparisonData?.entry_level_run?.failures || comparisonData.entry_level_run.failures.length === 0)) ? (
+                {(!(comparisonData?.ranked_failures?.length > 0) && (!comparisonData?.entry_level_run?.failures || comparisonData.entry_level_run.failures.length === 0) && (!comparisonData?.failures || comparisonData.failures.length === 0)) ? (
                   <div className="p-8 text-center text-[#96948D] text-xs bg-[#FAF9F6] rounded-xl border border-[#E6E2D9]">
                     Zero fatal exceptions detected in active run session.
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {(comparisonData?.ranked_failures?.length > 0 ? comparisonData.ranked_failures : comparisonData.entry_level_run.failures).map((fail: any, fIdx: number) => {
+                    {((comparisonData?.ranked_failures?.length > 0 ? comparisonData.ranked_failures : (comparisonData?.entry_level_run?.failures || comparisonData?.failures || [])) as any[]).map((fail: any, fIdx: number) => {
                       const getCategoryBadge = (type: string) => {
                         switch (type) {
                           case "TARGET_APPLICATION_ERROR":
@@ -2890,6 +2920,14 @@ export default function TierLensApp() {
                 <p className="text-xs text-[#6B6B65] mb-6">
                   Synthesizes real Web Vitals measurements, long tasks, and resource transfers into verified remediation steps.
                 </p>
+
+                {/* Active Tested Website Banner */}
+                {(comparisonData?.target_url || comparisonData?.entry_level_run?.target_url || comparisonData?.runs?.[0]?.target_url) && (
+                  <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-[#FAF9F5] border border-[#E6E2D9] rounded-lg text-xs font-mono">
+                    <span className="text-[#6B6B65]">Active Target:</span>
+                    <span className="text-[#D97745] font-bold">{comparisonData?.target_url || comparisonData?.entry_level_run?.target_url || comparisonData?.runs?.[0]?.target_url}</span>
+                  </div>
+                )}
 
                 {recommendations.length === 0 ? (
                   <div className="p-12 text-center text-[#6B6B65] text-xs">
