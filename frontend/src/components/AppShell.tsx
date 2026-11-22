@@ -10,7 +10,7 @@ import { Button, Pill } from "./ui";
 
 export type TabId =
   | "overview" | "web_test" | "device_builder" | "android_test" | "device_lab"
-  | "compare" | "failures" | "rca" | "graph" | "optimizations" | "reports" | "settings" | "docs";
+  | "compare" | "failures" | "rca" | "graph" | "reports" | "settings" | "docs";
 
 type NavItem = { id: TabId; label: string; icon: LucideIcon };
 type NavGroup = { title: string; items: NavItem[] };
@@ -33,7 +33,6 @@ const NAV: NavGroup[] = [
       { id: "failures", label: "Failure Explorer", icon: AlertOctagon },
       { id: "rca", label: "Root Cause Analysis", icon: Brain },
       { id: "graph", label: "Intelligence Graph", icon: Database },
-      { id: "optimizations", label: "Optimization Workflow", icon: CheckCircle2 },
     ],
   },
   {

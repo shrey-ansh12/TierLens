@@ -78,7 +78,6 @@ type TabType =
   | "failures"
   | "rca"
   | "graph"
-  | "optimizations"
   | "history"
   | "reports"
   | "settings"
@@ -1118,15 +1117,6 @@ export default function TierLensApp() {
             >
               <FileText className="w-4 h-4 text-[#D97745]" />
               Audit Reports
-            </button>
-            <button
-              onClick={() => navigateToTab("optimizations")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
-                activeTab === "optimizations" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5 shadow-sm" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
-              }`}
-            >
-              <CheckCircle2 className="w-4 h-4 text-[#36865A]" />
-              Optimization Workflow
             </button>
 
             <div className="text-[10px] font-semibold text-[#96948D] uppercase px-3 pt-4 pb-1.5 tracking-wider">
@@ -2890,7 +2880,7 @@ export default function TierLensApp() {
           {/* ========================================================================= */}
           {/* TAB: ROOT CAUSE ANALYSIS */}
           {/* ========================================================================= */}
-          {(activeTab === "rca" || activeTab === "optimizations") && (
+          {activeTab === "rca" && (
             <div className="space-y-6 animate-tab-enter">
               <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#E6E2D9] shadow-warm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#D97745]/40">
                 <h2 className="text-base font-bold text-[#252525] flex items-center gap-2 mb-2">
