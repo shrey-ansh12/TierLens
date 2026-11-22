@@ -34,21 +34,54 @@ export default function AuditReportsView({ onSelectRunForReport }: AuditReportsV
   const fetchReports = async () => {
     setLoading(true);
     try {
-      // Fetch historical runs from API
-      const res = await ApiClient.getHistoricalRuns({ limit: 30 });
-      const rawRuns = Array.isArray(res) ? res : (res?.runs || []);
-      const normalized = rawRuns.map((r: any) => ({
-        ...r,
-        id: r.id || r.run_id,
-        target_url: r.target_url || r.project_name || "https://app.local",
-        device_profile_name: r.device_profile_name || r.device_profile?.name || "Target Profile",
-        metrics: Array.isArray(r.metrics)
+      // First try dedicated audit reports endpoint with real measured vitals
+      let rawRuns: any[] = [];
+      try {
+        const auditRes = await ApiClient.getAuditReports({ limit: 50 });
+        if (Array.isArray(auditRes) && auditRes.length > 0) {
+          rawRuns = auditRes;
+        }
+      } catch (e) {
+        console.warn("Audit reports endpoint fallback:", e);
+      }
+
+      if (rawRuns.length === 0) {
+        const histRes = await ApiClient.getHistoricalRuns({ limit: 50 });
+        rawRuns = Array.isArray(histRes) ? histRes : (histRes?.runs || []);
+      }
+
+      // Filter STRICTLY for actual live runs that have measured Web Vitals
+      const actualRuns = rawRuns.filter((r: any) => {
+        const hasMetrics = (Array.isArray(r.metrics) && r.metrics.length > 0) || (r.metric_count && r.metric_count > 0);
+        return hasMetrics;
+      });
+
+      const normalized = actualRuns.map((r: any) => {
+        const metricsList = Array.isArray(r.metrics)
           ? r.metrics
-          : Object.entries(r.metrics || {}).map(([name, val]) => ({ name, value: val })),
-        failures: r.failures || [],
-        failure_count: r.failure_count || (r.failures?.length || 0),
-        recommendations: r.recommendations || []
-      }));
+          : Object.entries(r.metrics || {}).map(([name, val]) => ({ name, value: val }));
+
+        const mDict: Record<string, any> = {};
+        metricsList.forEach((m: any) => {
+          mDict[m.name] = m.value;
+        });
+
+        return {
+          ...r,
+          id: r.id || r.run_id,
+          target_url: r.target_url || r.project_name || "https://app.local",
+          device_profile_name: r.device_profile_name || r.device_profile?.name || "Target Profile",
+          metrics: metricsList,
+          lcp: mDict["LCP"] !== undefined ? mDict["LCP"] : r.lcp,
+          fcp: mDict["FCP"] !== undefined ? mDict["FCP"] : r.fcp,
+          cls: mDict["CLS"] !== undefined ? mDict["CLS"] : r.cls,
+          ttfb: mDict["TTFB"] !== undefined ? mDict["TTFB"] : r.ttfb,
+          failures: r.failures || [],
+          failure_count: r.failure_count ?? (r.failures?.length || 0),
+          recommendations: r.recommendations || []
+        };
+      });
+
       setReports(normalized);
     } catch (err) {
       console.error("Failed to load historical audit reports:", err);
@@ -87,9 +120,9 @@ export default function AuditReportsView({ onSelectRunForReport }: AuditReportsV
             <FileText className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-[#252525]">Interactive Audit Reports</h2>
+            <h2 className="text-lg font-semibold text-[#252525]">Audit Reports</h2>
             <p className="text-xs text-[#6B6B65]">
-              Browse, inspect, and export comprehensive performance audit reports for tested websites
+              Browse, inspect, and export comprehensive performance audit reports generated from live website tests
             </p>
           </div>
         </div>
@@ -171,13 +204,21 @@ export default function AuditReportsView({ onSelectRunForReport }: AuditReportsV
                     <div className="p-2 bg-[#FAF9F5] rounded border border-[#E6E2D9]">
                       <span className="text-[9px] uppercase font-semibold text-[#96948D] block">LCP</span>
                       <span className="text-xs font-bold text-[#252525]">
-                        {report.lcp ? `${report.lcp}ms` : "—"}
+                        {report.lcp !== undefined && report.lcp !== null
+                          ? typeof report.lcp === "number"
+                            ? `${report.lcp.toLocaleString()}ms`
+                            : `${report.lcp}ms`
+                          : "—"}
                       </span>
                     </div>
                     <div className="p-2 bg-[#FAF9F5] rounded border border-[#E6E2D9]">
                       <span className="text-[9px] uppercase font-semibold text-[#96948D] block">FCP</span>
                       <span className="text-xs font-bold text-[#252525]">
-                        {report.fcp ? `${report.fcp}ms` : "—"}
+                        {report.fcp !== undefined && report.fcp !== null
+                          ? typeof report.fcp === "number"
+                            ? `${report.fcp.toLocaleString()}ms`
+                            : `${report.fcp}ms`
+                          : "—"}
                       </span>
                     </div>
                     <div className="p-2 bg-[#FAF9F5] rounded border border-[#E6E2D9]">

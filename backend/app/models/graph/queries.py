@@ -1345,10 +1345,11 @@ async def get_historical_runs_graph(
         try:
             cypher = """
             MATCH (proj:Project)-[:HAS_TEST]->(run:TestRun)
+            WHERE EXISTS((run)-[:PRODUCED]->(:Metric))
             """
             params: Dict[str, Any] = {"limit": limit}
             if project_id:
-                cypher += " WHERE proj.id = $project_id"
+                cypher += " AND proj.id = $project_id"
                 params["project_id"] = project_id
             if status:
                 cypher += " AND run.status = $status"
@@ -1371,6 +1372,7 @@ async def get_historical_runs_graph(
                 count(DISTINCT fail) AS failure_count,
                 collect(DISTINCT fail.title)[..3] AS sample_failures,
                 count(DISTINCT rec) AS recommendation_count,
+                collect(DISTINCT {name: m.name, value: m.value, unit: m.unit, rating: m.rating}) AS metrics,
                 count(DISTINCT m) AS metric_count
             ORDER BY timestamp DESC
             LIMIT $limit
@@ -1386,7 +1388,7 @@ async def get_historical_runs_graph(
             from sqlalchemy import select
             from sqlalchemy.orm import selectinload
             from app.models.relational.entities import TestRun
-            stmt = select(TestRun).options(
+            stmt = select(TestRun).where(TestRun.metrics.any()).options(
                 selectinload(TestRun.project),
                 selectinload(TestRun.device_profile),
                 selectinload(TestRun.failures),
@@ -1409,6 +1411,7 @@ async def get_historical_runs_graph(
                     "failure_count": len(r.failures or []),
                     "sample_failures": [f.title for f in (r.failures or [])[:3]],
                     "recommendation_count": len(r.recommendations or []),
+                    "metrics": [{"name": m.name, "value": m.value, "unit": m.unit, "rating": m.rating} for m in (r.metrics or [])],
                     "metric_count": len(r.metrics or [])
                 })
             return runs

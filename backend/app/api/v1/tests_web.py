@@ -3,7 +3,7 @@ import asyncio
 import logging
 from typing import List, Optional
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status, Response
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status, Response, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -283,3 +283,43 @@ async def cancel_web_job(
         "status": "CANCELLED",
         "message": "Job cancellation request registered successfully."
     }
+
+
+@router.get("/audit-reports")
+async def get_audit_reports(
+    limit: int = Query(50, ge=1, le=100),
+    target_url: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Returns actual, verified audit reports generated from completed live website tests.
+    Strictly filters for runs that have real recorded Web Vitals metrics from browser sessions.
+    """
+    from app.api.v1.comparisons import serialize_test_run
+    from app.models.relational.entities import TestRun
+    from sqlalchemy.orm import selectinload
+
+    stmt = (
+        select(TestRun)
+        .where(TestRun.metrics.any())
+        .options(
+            selectinload(TestRun.project),
+            selectinload(TestRun.device_profile),
+            selectinload(TestRun.metrics),
+            selectinload(TestRun.failures),
+            selectinload(TestRun.recommendations),
+            selectinload(TestRun.artifacts)
+        )
+        .order_by(TestRun.created_at.desc())
+        .limit(limit)
+    )
+    if target_url:
+        stmt = stmt.where(TestRun.target_url == target_url)
+    if status:
+        stmt = stmt.where(TestRun.status == status)
+
+    res = await db.execute(stmt)
+    runs = res.scalars().all()
+
+    return [serialize_test_run(r) for r in runs if r]

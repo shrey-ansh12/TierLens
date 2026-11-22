@@ -298,6 +298,15 @@ export class ApiClient {
     return this.request(`/api/v1/graph/historical-runs${qs ? `?${qs}` : ""}`);
   }
 
+  static getAuditReports(params: { targetUrl?: string; status?: string; limit?: number } = {}) {
+    const q = new URLSearchParams();
+    if (params.targetUrl) q.set("target_url", params.targetUrl);
+    if (params.status) q.set("status", params.status);
+    if (params.limit) q.set("limit", String(params.limit));
+    const qs = q.toString();
+    return this.request(`/api/v1/tests/web/audit-reports${qs ? `?${qs}` : ""}`);
+  }
+
   static getNodeDetails(nodeId: string) {
     return this.request(`/api/v1/graph/node/${encodeURIComponent(nodeId)}`);
   }

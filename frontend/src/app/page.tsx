@@ -1128,7 +1128,7 @@ export default function TierLensApp() {
               }`}
             >
               <FileText className="w-4 h-4 text-[#D97745]" />
-              Interactive Audit Reports
+              Audit Reports
             </button>
             <button
               onClick={() => navigateToTab("optimizations")}
@@ -1143,15 +1143,6 @@ export default function TierLensApp() {
             <div className="text-[10px] font-semibold text-[#96948D] uppercase px-3 pt-4 pb-1.5 tracking-wider">
               Governance & Runbooks
             </div>
-            <button
-              onClick={() => navigateToTab("reports")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
-                activeTab === "reports" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5 shadow-sm" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
-              }`}
-            >
-              <FileText className="w-4 h-4 text-[#6B6B65]" />
-              Audit Reports
-            </button>
             <button
               onClick={() => navigateToTab("settings")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
