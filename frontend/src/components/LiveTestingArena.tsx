@@ -371,15 +371,6 @@ export default function LiveTestingArena({
               <FileText className="w-4 h-4" />
               <span>Open Interactive Audit Report</span>
             </button>
-            {onOpenDeviceArena && (
-              <button
-                onClick={() => onOpenDeviceArena(targetUrl)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-[#FAF9F5] border border-[#E6E2D9] text-[#252525] text-xs font-semibold rounded-lg transition-colors"
-              >
-                <GitCompare className="w-3.5 h-3.5 text-[#D97745]" />
-                <span>Battle Arena</span>
-              </button>
-            )}
             {onOpenGraph && (
               <button
                 onClick={onOpenGraph}
@@ -637,15 +628,6 @@ export default function LiveTestingArena({
                 <FileText className="w-3.5 h-3.5" />
                 <span>Open Interactive Audit Report</span>
               </button>
-              {onOpenDeviceArena && (
-                <button
-                  onClick={() => onOpenDeviceArena(targetUrl)}
-                  className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-[#FAF9F5] hover:bg-[#EEECE5] border border-[#E6E2D9] text-[#252525] text-xs font-semibold rounded-lg transition-colors"
-                >
-                  <GitCompare className="w-3.5 h-3.5" />
-                  <span>Launch in Device Battle Arena</span>
-                </button>
-              )}
             </div>
           )}
         </div>

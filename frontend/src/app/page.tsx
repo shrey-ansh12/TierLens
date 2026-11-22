@@ -63,7 +63,6 @@ import IntelligenceExplorer from "@/components/IntelligenceExplorer";
 import HealthScoreCard from "@/components/HealthScoreCard";
 import VisualEvidenceViewer from "@/components/VisualEvidenceViewer";
 import LiveTestingArena from "@/components/LiveTestingArena";
-import DeviceBattleArena from "@/components/DeviceBattleArena";
 import AuditReportModal from "@/components/AuditReportModal";
 import AuditReportsView from "@/components/AuditReportsView";
 import { ApiClient } from "@/lib/api";
@@ -72,7 +71,6 @@ type TabType =
   | "overview"
   | "web_test"
   | "live_arena"
-  | "battle_arena"
   | "device_builder"
   | "android_test"
   | "compare"
@@ -1044,15 +1042,6 @@ export default function TierLensApp() {
             >
               <Terminal className="w-4 h-4 text-[#D97745]" />
               Live Testing Arena
-            </button>
-            <button
-              onClick={() => navigateToTab("battle_arena")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-warm active:scale-[0.98] ${
-                activeTab === "battle_arena" ? "bg-[#F8E9DF] text-[#D97745] border-l-2 border-[#D97745] font-semibold pl-2.5 shadow-sm" : "text-[#6B6B65] hover:bg-[#EAE7DF] hover:text-[#252525]"
-              }`}
-            >
-              <GitCompare className="w-4 h-4 text-[#D97745]" />
-              Device Battle Arena
             </button>
             <button
               onClick={() => navigateToTab("device_builder")}
@@ -2314,13 +2303,6 @@ export default function TierLensApp() {
                         <Terminal className="w-3.5 h-3.5 text-[#D97745]" />
                         <span>Live Arena</span>
                       </button>
-                      <button
-                        onClick={() => navigateToTab("battle_arena")}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-[#FAF9F5] hover:bg-[#EEECE5] border border-[#E6E2D9] text-[#252525] text-xs font-semibold rounded-lg transition-warm active:scale-95"
-                      >
-                        <GitCompare className="w-3.5 h-3.5 text-[#D97745]" />
-                        <span>Battle Arena</span>
-                      </button>
                     </div>
                   </div>
 
@@ -3143,27 +3125,7 @@ export default function TierLensApp() {
                   }
                   handleOpenAuditReport(comparisonData || testResult?.single_run_data || testResult);
                 }}
-                onOpenDeviceArena={(url) => { setTestUrl(url); navigateToTab("battle_arena"); }}
                 onOpenGraph={() => navigateToTab("graph")}
-              />
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* TAB: DEVICE BATTLE ARENA */}
-          {/* ========================================================================= */}
-          {activeTab === "battle_arena" && (
-            <div className="animate-tab-enter">
-              <DeviceBattleArena
-                initialUrl={testUrl}
-                onOpenAuditReport={(compId, runId, payload) => {
-                  if (payload) {
-                    handleOpenAuditReport(payload);
-                  } else {
-                    handleOpenAuditReport(comparisonData || testResult?.single_run_data || testResult);
-                  }
-                }}
-                onOpenLiveArena={(jId) => { setLiveArenaJobId(jId); navigateToTab("live_arena"); }}
               />
             </div>
           )}
