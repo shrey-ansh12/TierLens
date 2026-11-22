@@ -165,7 +165,7 @@ export default function AuditReportsView({ onSelectRunForReport }: AuditReportsV
           <FileText className="w-8 h-8 text-[#96948D] mx-auto mb-2" />
           <p className="font-semibold text-sm text-[#252525]">No audit reports found</p>
           <p className="text-xs text-[#96948D] mt-1">
-            Run a test in Website Testing or Device Battle Arena to generate your first audit report.
+            Run a test in Website Testing or Live Testing Arena to generate your first audit report.
           </p>
         </div>
       ) : (
