@@ -31,17 +31,28 @@ export interface HealthScoreBreakdown {
 }
 
 export function calculateWebsiteHealthScore(
-  metrics: Array<{ name: string; value: number | string }>,
+  metrics: Array<{ name: string; value: number | string }> | Record<string, number | string>,
   failures: Array<{ failure_type?: string; severity?: string; title?: string }> = []
 ): HealthScoreBreakdown {
   const metricMap: Record<string, number> = {};
-  metrics.forEach((m) => {
-    const val = typeof m.value === "number" ? m.value : parseFloat(String(m.value));
-    if (!isNaN(val)) {
-      metricMap[m.name.toUpperCase()] = val;
-    }
-  });
 
+  if (Array.isArray(metrics)) {
+    metrics.forEach((m) => {
+      const val = typeof m.value === "number" ? m.value : parseFloat(String(m.value));
+      if (!isNaN(val)) {
+        metricMap[m.name.toUpperCase()] = val;
+      }
+    });
+  } else if (metrics && typeof metrics === "object") {
+    Object.entries(metrics).forEach(([k, v]) => {
+      const val = typeof v === "number" ? v : parseFloat(String(v));
+      if (!isNaN(val)) {
+        metricMap[k.toUpperCase()] = val;
+      }
+    });
+  }
+
+  const hasMetrics = Object.keys(metricMap).length > 0;
   const lcp = metricMap["LCP"];
   const fcp = metricMap["FCP"];
   const cls = metricMap["CLS"];
@@ -49,7 +60,7 @@ export function calculateWebsiteHealthScore(
   const pageLoad = metricMap["PAGE_LOAD_TIME"];
 
   // 1. LCP Score (Weight 30%) - Good <= 2500ms, Poor > 4000ms
-  let lcpScore = 100;
+  let lcpScore = hasMetrics ? 50 : 0;
   if (lcp !== undefined) {
     if (lcp <= 2500) {
       lcpScore = 100;
@@ -61,7 +72,7 @@ export function calculateWebsiteHealthScore(
   }
 
   // 2. FCP Score (Weight 20%) - Good <= 1800ms, Poor > 3000ms
-  let fcpScore = 100;
+  let fcpScore = hasMetrics ? 50 : 0;
   if (fcp !== undefined) {
     if (fcp <= 1800) {
       fcpScore = 100;
@@ -73,7 +84,7 @@ export function calculateWebsiteHealthScore(
   }
 
   // 3. CLS Score (Weight 15%) - Good <= 0.1, Poor > 0.25
-  let clsScore = 100;
+  let clsScore = hasMetrics ? 70 : 0;
   if (cls !== undefined) {
     if (cls <= 0.1) {
       clsScore = 100;
@@ -85,7 +96,7 @@ export function calculateWebsiteHealthScore(
   }
 
   // 4. TTFB Score (Weight 15%) - Good <= 800ms, Poor > 1800ms
-  let ttfbScore = 100;
+  let ttfbScore = hasMetrics ? 70 : 0;
   if (ttfb !== undefined) {
     if (ttfb <= 800) {
       ttfbScore = 100;
@@ -109,13 +120,15 @@ export function calculateWebsiteHealthScore(
   const failureScore = Math.max(0, 100 - failurePenalty);
 
   // Weighted composite score
-  const compositeScore = Math.round(
-    lcpScore * 0.3 +
-    fcpScore * 0.2 +
-    clsScore * 0.15 +
-    ttfbScore * 0.15 +
-    failureScore * 0.2
-  );
+  const compositeScore = !hasMetrics
+    ? (failures.length > 0 ? failureScore : 0)
+    : Math.round(
+        lcpScore * 0.3 +
+        fcpScore * 0.2 +
+        clsScore * 0.15 +
+        ttfbScore * 0.15 +
+        failureScore * 0.2
+      );
 
   let grade: "Excellent" | "Good" | "Needs Improvement" | "Poor" = "Good";
   let gradeColor = "#557DAA";

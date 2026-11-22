@@ -68,6 +68,7 @@ export default function LiveTestingArena({
   const [copiedLogs, setCopiedLogs] = useState(false);
   const [liveMetrics, setLiveMetrics] = useState<Record<string, { value: number | string; rating?: string }>>({});
   const [localReportModalOpen, setLocalReportModalOpen] = useState(false);
+  const [reportPayload, setReportPayload] = useState<any>(null);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const logContainerRef = useRef<HTMLDivElement | null>(null);
@@ -259,6 +260,24 @@ export default function LiveTestingArena({
     return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(hundredths).padStart(2, "0")}`;
   };
 
+  const handleOpenReport = async () => {
+    let payload = jobStatus?.comparison_data || jobStatus?.single_run_data;
+    if (!payload && jobId) {
+      try {
+        const fresh = await ApiClient.getWebJobStatus(jobId);
+        payload = fresh?.comparison_data || fresh?.single_run_data || fresh;
+      } catch (e) {
+        payload = jobStatus;
+      }
+    }
+    if (!payload) payload = jobStatus;
+    if (onOpenAuditReport) {
+      onOpenAuditReport(jobId!, jobStatus?.test_run_id, payload);
+    }
+    setReportPayload(payload);
+    setLocalReportModalOpen(true);
+  };
+
   const isCompleted =
     jobStatus?.status === "COMPLETED" || jobStatus?.status === "COMPLETED_WITH_WARNINGS";
   const isFailed = jobStatus?.status === "FAILED";
@@ -359,13 +378,7 @@ export default function LiveTestingArena({
 
           <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={() => {
-                const payload = jobStatus?.comparison_data || jobStatus?.single_run_data || jobStatus;
-                if (onOpenAuditReport) {
-                  onOpenAuditReport(jobId!, jobStatus?.test_run_id, payload);
-                }
-                setLocalReportModalOpen(true);
-              }}
+              onClick={handleOpenReport}
               className="flex items-center gap-2 px-4 py-2 bg-[#D97745] hover:bg-[#B95E32] text-white text-xs font-bold rounded-lg transition-colors shadow-warm"
             >
               <FileText className="w-4 h-4" />
@@ -616,13 +629,7 @@ export default function LiveTestingArena({
           {isCompleted && (
             <div className="mt-4 pt-4 border-t border-[#E6E2D9] space-y-2">
               <button
-                onClick={() => {
-                  const payload = jobStatus?.comparison_data || jobStatus?.single_run_data || jobStatus;
-                  if (onOpenAuditReport) {
-                    onOpenAuditReport(jobId!, jobStatus?.test_run_id, payload);
-                  }
-                  setLocalReportModalOpen(true);
-                }}
+                onClick={handleOpenReport}
                 className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-[#D97745] hover:bg-[#B95E32] text-white text-xs font-semibold rounded-lg transition-colors shadow-xs"
               >
                 <FileText className="w-3.5 h-3.5" />
@@ -704,7 +711,7 @@ export default function LiveTestingArena({
         <AuditReportModal
           isOpen={localReportModalOpen}
           onClose={() => setLocalReportModalOpen(false)}
-          reportData={jobStatus?.comparison_data || jobStatus?.single_run_data || jobStatus}
+          reportData={reportPayload || jobStatus?.comparison_data || jobStatus?.single_run_data || jobStatus}
         />
       )}
     </div>

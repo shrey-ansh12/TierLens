@@ -116,8 +116,8 @@ export default function IntelligenceExplorer() {
       const data = await ApiClient.getGraphProjects();
       if (Array.isArray(data) && data.length > 0) {
         setTestedWebsites(data);
-        // Default to the first website if currently ALL or empty
-        setSelectedWebsite((prev) => (prev === "ALL" || !prev ? (data[0].id || data[0].name) : prev));
+        // Retain current selection if valid; otherwise default to "ALL" so all tested projects are visible
+        setSelectedWebsite((prev) => (prev && prev !== "ALL" && data.some(d => d.id === prev || d.name === prev) ? prev : "ALL"));
       }
     } catch (e) {
       console.error("Failed to load tested websites:", e);
@@ -531,12 +531,12 @@ export default function IntelligenceExplorer() {
                   onChange={(e) => setSelectedWebsite(e.target.value)}
                   className="bg-transparent text-xs font-bold text-[#252525] focus:outline-none cursor-pointer pr-1"
                 >
+                  <option value="ALL">All Tested Websites (Global)</option>
                   {testedWebsites.map((w) => (
                     <option key={w.id || w.name} value={w.id || w.name}>
                       {w.name} ({w.test_runs_count} runs)
                     </option>
                   ))}
-                  <option value="ALL">All Tested Websites (Global)</option>
                 </select>
               </div>
             </div>

@@ -15,7 +15,8 @@ async def sync_run_to_neo4j(
     metrics: List[Dict[str, Any]],
     failures: List[Dict[str, Any]],
     recommendations: List[Dict[str, Any]],
-    duration_ms: int = 0
+    duration_ms: int = 0,
+    target_url: str = ""
 ) -> bool:
     """
     Persists test run entities and relationships to Neo4j knowledge graph,
@@ -39,7 +40,8 @@ async def sync_run_to_neo4j(
     cypher = """
     MERGE (ws:Workspace {name: $ws_name})
     MERGE (proj:Project {id: $project_id})
-      ON CREATE SET proj.name = $project_name, proj.created_at = datetime()
+      ON CREATE SET proj.name = $project_name, proj.target_url = $target_url, proj.created_at = datetime()
+      SET proj.target_url = coalesce($target_url, proj.target_url), proj.name = coalesce($project_name, proj.name)
     MERGE (ws)-[:CONTAINS]->(proj)
 
     MERGE (entrySeg:MarketSegment {name: "Sub-₹8,000 Budget Devices"})
@@ -72,64 +74,62 @@ async def sync_run_to_neo4j(
         id: $run_id,
         status: $status,
         duration_ms: $duration_ms,
+        target_url: $target_url,
         timestamp: datetime()
     })
     CREATE (proj)-[:HAS_TEST]->(run)
     CREATE (run)-[:USED_PROFILE]->(dp)
 
-    WITH run, entrySeg, midSeg, congestedNet
-    UNWIND $metrics AS m
-    CREATE (met:Metric {
-        name: m.name,
-        value: m.value,
-        unit: m.unit,
-        rating: m.rating,
-        is_emulated: m.is_emulated
-    })
-    CREATE (run)-[:PRODUCED]->(met)
-
-    WITH run, entrySeg, midSeg, congestedNet
-    UNWIND $failures AS f
-    CREATE (fail:Failure {
-        id: coalesce(f.id, f.error_signature),
-        title: f.title,
-        type: f.failure_type,
-        signature: f.error_signature,
-        message: f.message
-    })
-    CREATE (run)-[:DETECTED]->(fail)
-
-    MERGE (sig:ErrorSignature {signature: f.error_signature})
-      ON CREATE SET sig.title = f.title, sig.first_seen = datetime()
-    CREATE (fail)-[:MATCHES]->(sig)
-
-    FOREACH (_ IN CASE WHEN $tier = 'ENTRY_LEVEL' THEN [1] ELSE [] END |
-      MERGE (fail)-[:IMPACTS_POPULATION {estimated_users_millions: 190, population_pct: 38.5}]->(entrySeg)
-      MERGE (fail)-[:AFFECTS_NETWORK_COHORT {estimated_users_millions: 310, population_pct: 61.0}]->(congestedNet)
-    )
-    FOREACH (_ IN CASE WHEN $tier = 'GOOD_BUDGET' THEN [1] ELSE [] END |
-      MERGE (fail)-[:IMPACTS_POPULATION {estimated_users_millions: 180, population_pct: 36.0}]->(midSeg)
+    FOREACH (m IN $metrics |
+      CREATE (met:Metric {
+          name: m.name,
+          value: m.value,
+          unit: m.unit,
+          rating: m.rating,
+          is_emulated: m.is_emulated
+      })
+      CREATE (run)-[:PRODUCED]->(met)
     )
 
-    WITH run, fail, f
-    UNWIND $recommendations AS r
-    CREATE (rc:RootCause {
-        id: coalesce(r.id, r.title),
-        title: r.title,
-        probable_cause: r.probable_cause,
-        category: coalesce(r.category, 'Performance'),
-        confidence: coalesce(r.confidence_level, 'HIGH (85%)')
-    })
-    CREATE (rec:Recommendation {
-        id: coalesce(r.id, r.title),
-        title: r.title,
-        impact: coalesce(r.impact, 'HIGH'),
-        remediation: r.remediation,
-        status: coalesce(r.status, 'OPEN')
-    })
-    CREATE (fail)-[:INDICATES]->(rc)
-    CREATE (rc)-[:SUGGESTS]->(rec)
-    CREATE (run)-[:PRODUCED_RECOMMENDATION]->(rec)
+    FOREACH (f IN $failures |
+      CREATE (fail:Failure {
+          id: coalesce(f.id, f.error_signature),
+          title: f.title,
+          type: f.failure_type,
+          signature: f.error_signature,
+          message: f.message
+      })
+      CREATE (run)-[:DETECTED]->(fail)
+      MERGE (sig:ErrorSignature {signature: f.error_signature})
+        ON CREATE SET sig.title = f.title, sig.first_seen = datetime()
+      CREATE (fail)-[:MATCHES]->(sig)
+      FOREACH (_ IN CASE WHEN $tier = 'ENTRY_LEVEL' THEN [1] ELSE [] END |
+        MERGE (fail)-[:IMPACTS_POPULATION {estimated_users_millions: 190, population_pct: 38.5}]->(entrySeg)
+        MERGE (fail)-[:AFFECTS_NETWORK_COHORT {estimated_users_millions: 310, population_pct: 61.0}]->(congestedNet)
+      )
+      FOREACH (_ IN CASE WHEN $tier = 'GOOD_BUDGET' THEN [1] ELSE [] END |
+        MERGE (fail)-[:IMPACTS_POPULATION {estimated_users_millions: 180, population_pct: 36.0}]->(midSeg)
+      )
+    )
+
+    FOREACH (r IN $recommendations |
+      CREATE (rc:RootCause {
+          id: coalesce(r.id, r.title),
+          title: r.title,
+          probable_cause: r.probable_cause,
+          category: coalesce(r.category, 'Performance'),
+          confidence: coalesce(r.confidence_level, 'HIGH (85%)')
+      })
+      CREATE (rec:Recommendation {
+          id: coalesce(r.id, r.title),
+          title: r.title,
+          impact: coalesce(r.impact, 'HIGH'),
+          remediation: r.remediation,
+          status: coalesce(r.status, 'OPEN')
+      })
+      CREATE (rc)-[:SUGGESTS]->(rec)
+      CREATE (run)-[:PRODUCED_RECOMMENDATION]->(rec)
+    )
     """
 
     tier = profile_data.get("tier", "ENTRY_LEVEL")
@@ -138,6 +138,7 @@ async def sync_run_to_neo4j(
         "ws_name": workspace_name,
         "project_id": project_id,
         "project_name": project_name,
+        "target_url": target_url or project_name,
         "run_id": run_id,
         "tier": tier,
         "status": status,
@@ -551,7 +552,7 @@ async def get_graph_stats(db=None, project_id: Optional[str] = None) -> Dict[str
         try:
             if project_id and project_id != "ALL":
                 stats_cypher = """
-                MATCH (p:Project) WHERE p.id = $project_id OR p.name = $project_id
+                MATCH (p:Project) WHERE p.id = $project_id OR p.name = $project_id OR p.target_url = $project_id OR toLower(p.name) = toLower($project_id)
                 OPTIONAL MATCH (p)-[:HAS_TEST]->(tr:TestRun)
                 OPTIONAL MATCH (tr)-[:USED_PROFILE]->(dp:DeviceProfile)
                 OPTIONAL MATCH (tr)-[:PRODUCED]->(m:Metric)
@@ -685,7 +686,7 @@ async def get_explorer_graph(
             if project_id and project_id != "ALL":
                 cypher = """
                 MATCH (p:Project)
-                WHERE p.id = $project_id OR p.name = $project_id
+                WHERE p.id = $project_id OR p.name = $project_id OR p.target_url = $project_id OR toLower(p.name) = toLower($project_id)
                 OPTIONAL MATCH (p)-[r1:HAS_TEST]->(run:TestRun)
                 OPTIONAL MATCH (run)-[r2:USED_PROFILE]->(dp:DeviceProfile)
                 OPTIONAL MATCH (dp)-[r7:REPRESENTS_SEGMENT]->(seg:MarketSegment)
@@ -1201,23 +1202,25 @@ async def get_root_cause_chains(limit: int = 50, db=None, project_id: Optional[s
 async def get_distinct_graph_projects(db=None) -> List[Dict[str, Any]]:
     """
     Returns distinct tested websites/projects available in the Neo4j knowledge graph.
+    Merges with PostgreSQL to ensure any newly tested project or URL is immediately available.
     """
+    projects_map: Dict[str, Dict[str, Any]] = {}
     health = await neo4j_manager.check_health()
     if health.get("connected"):
         try:
             cypher = """
             MATCH (p:Project)
             OPTIONAL MATCH (p)-[:HAS_TEST]->(run:TestRun)
-            RETURN 
-                p.id AS id,
-                p.name AS name,
-                p.target_url AS target_url,
-                count(DISTINCT run) AS test_runs_count
+            WITH p.name AS name, p.target_url AS p_url, collect(p.id)[0] AS id, count(DISTINCT run) AS test_runs_count
+            WHERE name IS NOT NULL AND name <> ''
+            RETURN id, name, coalesce(p_url, 'https://' + name) AS target_url, test_runs_count
             ORDER BY test_runs_count DESC
             """
             records = await neo4j_manager.run_query(cypher)
             sanitized = _sanitize_neo4j_data(records)
-            return [r for r in sanitized if r.get("name")]
+            for r in sanitized:
+                if r.get("name"):
+                    projects_map[r["name"]] = r
         except Exception as e:
             logger.warning(f"Neo4j get_distinct_graph_projects failed: {e}")
 
@@ -1237,16 +1240,24 @@ async def get_distinct_graph_projects(db=None) -> List[Dict[str, Any]]:
                 .order_by(func.count(TestRun.id).desc())
             )
             res = await db.execute(stmt)
-            return [{
-                "id": str(r[0]),
-                "name": r[1],
-                "target_url": r[2] or f"https://{r[1]}",
-                "test_runs_count": r[3]
-            } for r in res.all()]
+            for r in res.all():
+                p_name = r[1]
+                if p_name and p_name not in projects_map:
+                    projects_map[p_name] = {
+                        "id": str(r[0]),
+                        "name": p_name,
+                        "target_url": r[2] or f"https://{p_name}",
+                        "test_runs_count": r[3]
+                    }
+                elif p_name and p_name in projects_map:
+                    if not projects_map[p_name].get("target_url") and r[2]:
+                        projects_map[p_name]["target_url"] = r[2]
         except Exception as e:
             logger.error(f"PostgreSQL distinct projects query failed: {e}")
 
-    return []
+    result = list(projects_map.values())
+    result.sort(key=lambda x: x.get("test_runs_count", 0), reverse=True)
+    return result
     """
     Traces verified relationship chains:
     Project -> TestRun -> Failure -> ErrorSignature -> RootCause -> Recommendation

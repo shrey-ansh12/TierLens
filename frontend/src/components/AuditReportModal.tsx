@@ -50,8 +50,26 @@ export default function AuditReportModal({
   const activeRun = runs[selectedRunIdx] || runs[0];
 
   const targetUrl = activeRun.target_url || reportData.target_url || "https://app.local";
-  const metrics = activeRun.metrics || [];
-  const failures = activeRun.failures || [];
+
+  // Normalize metrics from all potential shapes (array, dict, metrics_summary, current_metrics)
+  let rawMetrics: any =
+    activeRun.metrics ||
+    activeRun.metrics_summary ||
+    activeRun.current_metrics ||
+    reportData.metrics ||
+    reportData.metrics_summary ||
+    reportData.current_metrics ||
+    [];
+
+  if (!Array.isArray(rawMetrics) && typeof rawMetrics === "object" && rawMetrics !== null) {
+    rawMetrics = Object.entries(rawMetrics).map(([name, value]) => ({
+      name,
+      value: value as any,
+      unit: name.includes("TIME") || name === "LCP" || name === "FCP" || name === "TTFB" ? "ms" : name === "CLS" ? "score" : ""
+    }));
+  }
+  const metrics: Array<{ name: string; value: any; unit?: string; rating?: string }> = Array.isArray(rawMetrics) ? rawMetrics : [];
+  const failures = activeRun.failures || reportData.failures || [];
   const recommendations = activeRun.recommendations || reportData.recommendations || [];
   const deviceProfile = activeRun.device_profile || {};
   const baseUrl = ApiClient.getBaseUrl();

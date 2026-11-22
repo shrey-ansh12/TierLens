@@ -191,7 +191,8 @@ async def _execute_single_tier(
         metrics=result.metrics,
         failures=result.failures,
         recommendations=rca_items,
-        duration_ms=result.duration_ms
+        duration_ms=result.duration_ms,
+        target_url=target_url
     )
 
     return test_run, result
